@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  # MongoDB
+  mongodb:
+    image: mongo:7.0
+    container_name: canopy-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: canopy_copilot
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - canopy-network
+
+  # PostgreSQL with PostGIS
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: canopy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: canopy_copilot
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - canopy-network
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: canopy-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - canopy-network
+
+  # MinIO (S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: canopy-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - canopy-network
+
+  # OpenDroneMap (NodeODM)
+  odm:
+    image: opendronemap/nodeodm:latest
+    container_name: canopy-odm
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - odm_data:/var/www/data
+      - odm_tmp:/tmp
+    networks:
+      - canopy-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: canopy-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://admin:password@mongodb:27017
+      - POSTGRES_URL=postgresql://user:password@postgres:5432/canopy_copilot
+      - REDIS_URL=redis://redis:6379/0
+      - S3_ENDPOINT=http://minio:9000
+      - ODM_URL=http://odm:3000
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/data
+    depends_on:
+      - mongodb
+      - postgres
+      - redis
+      - minio
+      - odm
+    networks:
+      - canopy-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: canopy-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - canopy-network
+
+volumes:
+  mongodb_data:
+  postgres_data:
+  redis_data:
+  minio_data:
+  odm_data:
+  odm_tmp:
+  backend_data:
+
+networks:
+  canopy-network:
+    driver: bridge
