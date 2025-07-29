@@ -1,0 +1,268 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run dependency updates weekly
+    - cron: '0 2 * * 1'
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  dependency-update:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Update Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-tools
+          pip-compile --upgrade pyproject.toml
+
+      - name: Update Node.js dependencies
+        working-directory: apps/frontend
+        run: |
+          npm update
+          npm audit fix
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          title: 'chore: update dependencies'
+          body: 'Automated dependency updates'
+          branch: 'chore/dependency-updates'
+          commit-message: 'chore: update dependencies'
+
+  test-backend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt', 'pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          npm ci
+
+      - name: Run linting
+        run: |
+          make lint-backend
+
+      - name: Run type checking
+        run: |
+          mypy apps/ --ignore-missing-imports
+
+      - name: Run tests with coverage
+        run: |
+          make test-backend
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./htmlcov/coverage.xml
+          flags: backend
+          name: backend-coverage
+
+  test-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/frontend
+        run: npm ci
+
+      - name: Run linting
+        working-directory: apps/frontend
+        run: npm run lint
+
+      - name: Run type checking
+        working-directory: apps/frontend
+        run: npm run type-check
+
+      - name: Run tests
+        working-directory: apps/frontend
+        run: npm test -- --coverage --watchAll=false
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: apps/frontend/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          npm ci
+        working-directory: apps/frontend
+
+      - name: Run Python security checks
+        run: |
+          make security-check-full
+
+      - name: Run bandit security scan
+        run: |
+          bandit -r apps/ -f json -o bandit-report.json || true
+
+      - name: Run Node.js security audit
+        working-directory: apps/frontend
+        run: npm audit --audit-level=moderate
+
+      - name: Upload security scan results
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-scan-results
+          path: bandit-report.json
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and test Docker images
+        run: |
+          make docker-build
+
+      - name: Run Docker Compose tests
+        run: |
+          make docker-run
+          sleep 30
+          curl -f http://localhost:8000/health || exit 1
+          curl -f http://localhost:3000 || exit 1
+          make docker-stop
+
+  performance:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          npm ci
+
+      - name: Start backend server
+        run: |
+          make start-backend &
+          sleep 10
+
+      - name: Run performance tests
+        run: |
+          # Basic load testing with curl
+          for i in {1..10}; do
+            curl -w "@-" -o /dev/null -s "http://localhost:8000/health" <<< "time_total: %{time_total}\n"
+          done | awk '{sum+=$1} END {print "Average response time:", sum/NR "s"}'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, security, docker-build, performance]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment..."
+          # Add your staging deployment commands here
+          # Example: kubectl apply -f k8s/staging/
+          # Example: docker push your-registry/canopy-copilot:staging
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, security, docker-build, performance]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production environment..."
+          # Add your production deployment commands here
+          # Example: kubectl apply -f k8s/production/
+          # Example: docker push your-registry/canopy-copilot:latest

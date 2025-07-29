@@ -83,7 +83,9 @@
 
 /* Animation for typing indicator */
 @keyframes pulse {
-  0%, 70%, 100% {
+  0%,
+  70%,
+  100% {
     transform: scale(1);
     opacity: 0.5;
   }

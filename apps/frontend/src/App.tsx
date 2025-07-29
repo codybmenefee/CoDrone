@@ -1,260 +1,263 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Drone, Settings, Trash2, RefreshCw } from 'lucide-react'
-import { cn, generateSessionId } from '@/lib/utils'
-import { chatApi } from '@/lib/api'
-import ChatMessage from '@/components/ChatMessage'
-import ChatInput from '@/components/ChatInput'
-import TypingIndicator from '@/components/TypingIndicator'
-import type { ChatMessage as ChatMessageType, ChatResponse, Tool } from '@/types'
+import { useState, useEffect, useRef } from 'react';
+import { Plane, Settings, Trash2, RefreshCw } from 'lucide-react';
+import { generateSessionId } from '@/lib/utils';
+import { chatApi } from '@/lib/api';
+import ChatMessage from './components/ChatMessage';
+import ChatInput from './components/ChatInput';
+import FileUpload from './components/FileUpload';
+import TypingIndicator from './components/TypingIndicator';
+import type {
+  ChatMessage as ChatMessageType,
+  ChatResponse,
+  Tool,
+} from '@/types';
 
 interface MessageWithTools extends ChatMessageType {
-  toolCalls?: ChatResponse['tool_calls']
+  toolCalls?: ChatResponse['tool_calls'];
 }
 
 function App() {
-  const [messages, setMessages] = useState<MessageWithTools[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [sessionId, setSessionId] = useState(() => generateSessionId())
-  const [tools, setTools] = useState<Tool[]>([])
-  const [isConnected, setIsConnected] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [messages, setMessages] = useState<MessageWithTools[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [tools, setTools] = useState<Tool[]>([]);
+  const [sessionId] = useState(() => generateSessionId());
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom when new messages arrive
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages, isLoading])
+    scrollToBottom();
+  }, [messages]);
 
   // Check API health and load tools on mount
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        await chatApi.healthCheck()
-        setIsConnected(true)
-        
-        const toolsResponse = await chatApi.listTools()
-        setTools(toolsResponse.tools)
-        
-        // Add welcome message
-        setMessages([{
+        // Check if backend is available
+        const healthResponse = await fetch('http://localhost:8000/health');
+        if (!healthResponse.ok) {
+          console.warn('Backend not available');
+          return;
+        }
+
+        // Load available tools
+        const toolsResponse = await chatApi.listTools();
+        setTools(toolsResponse.tools);
+
+        // Add welcome message with tools info
+        const welcomeMessage: MessageWithTools = {
           role: 'assistant',
-          content: `# Welcome to Canopy Copilot! 🚁
-
-I'm your AI-powered drone data analysis assistant. I can help you with:
-
-**📊 Data Analysis**
-- Analyze drone imagery and orthomosaics
-- Generate NDVI and vegetation health reports
-- Process survey and inspection data
-
-**📏 Measurements & Calculations**
-- Calculate field areas from polygon coordinates
-- Estimate processing times for different tasks
-- Analyze flight patterns and coverage
-
-**📋 Report Generation**
-- Create professional crop health reports
-- Generate survey documentation
-- Build inspection summaries
+          content: `Hello! I'm your AI-powered drone data analysis assistant. I can help you with:
 
 **🔧 Available Tools** (${toolsResponse.tools.length} loaded)
 ${toolsResponse.tools.map(tool => `- **${tool.name.replace(/_/g, ' ')}**: ${tool.description}`).join('\n')}
 
-Try asking me something like:
-- "Analyze the orthomosaic from Farm A"
-- "Calculate the area of this field: [[lat, lon], [lat, lon], ...]"
-- "What datasets are available for analysis?"
-- "Generate a crop health report preview"
+**What I can do:**
+- Analyze drone imagery and orthomosaics
+- Calculate field areas and measurements
+- Estimate processing times for different tasks
+- Generate report previews
+- List available datasets
 
-What would you like to work on today?`,
-          timestamp: new Date()
-        }])
-        
+Feel free to ask me anything about your drone data!`,
+          timestamp: new Date(),
+        };
+
+        setMessages([welcomeMessage]);
       } catch (error) {
-        console.error('Failed to initialize app:', error)
-        setIsConnected(false)
-        setMessages([{
+        console.error('Failed to initialize app:', error);
+        // Add error message
+        const errorMessage: MessageWithTools = {
           role: 'assistant',
-          content: '⚠️ **Connection Error**\n\nI\'m having trouble connecting to the backend. Please make sure the API server is running on port 8000.\n\nYou can start it with:\n```bash\ncd apps/api-server\nuvicorn main:app --reload --port 8000\n```',
-          timestamp: new Date()
-        }])
+          content:
+            "Sorry, I'm having trouble connecting to the backend. Please make sure the server is running.",
+          timestamp: new Date(),
+        };
+        setMessages([errorMessage]);
       }
-    }
+    };
 
-    initializeApp()
-  }, [])
+    initializeApp();
+  }, []);
 
-  const handleSendMessage = async (content: string, attachments: string[]) => {
-    if (!content.trim() && attachments.length === 0) return
+  const handleSendMessage = async (content: string) => {
+    if (!content.trim() || isLoading) return;
 
-    // Add user message
     const userMessage: MessageWithTools = {
       role: 'user',
-      content,
-      timestamp: new Date()
-    }
+      content: content.trim(),
+      timestamp: new Date(),
+    };
 
-    setMessages(prev => [...prev, userMessage])
-    setIsLoading(true)
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
 
     try {
-      // Send to API
-      const response = await chatApi.sendMessage({
-        messages: [...messages, userMessage],
-        session_id: sessionId,
-        file_attachments: attachments
-      })
+      const response = await chatApi.sendMessage(content.trim(), sessionId);
 
-      // Add assistant response
       const assistantMessage: MessageWithTools = {
         role: 'assistant',
         content: response.message,
-        timestamp: new Date(response.timestamp),
-        toolCalls: response.tool_calls
-      }
+        timestamp: new Date(),
+        toolCalls: response.tool_calls,
+      };
 
-      setMessages(prev => [...prev, assistantMessage])
-
+      setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Chat error:', error)
-      
-      // Add error message
+      console.error('Failed to send message:', error);
+
       const errorMessage: MessageWithTools = {
         role: 'assistant',
-        content: '❌ **Error**\n\nSorry, I encountered an error processing your request. Please check that the API server is running and try again.',
-        timestamp: new Date()
-      }
+        content:
+          'Sorry, I encountered an error while processing your message. Please try again.',
+        timestamp: new Date(),
+      };
 
-      setMessages(prev => [...prev, errorMessage])
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  const clearChat = async () => {
-    try {
-      await chatApi.clearSession(sessionId)
-      setMessages([])
-      setSessionId(generateSessionId())
-    } catch (error) {
-      console.error('Failed to clear session:', error)
-    }
-  }
+  const handleFileUpload = async (files: File[]) => {
+    // For now, just acknowledge the files
+    const fileNames = files.map(f => f.name).join(', ');
+    const userMessage: MessageWithTools = {
+      role: 'user',
+      content: `I've uploaded these files: ${fileNames}`,
+      timestamp: new Date(),
+    };
 
-  const refreshConnection = async () => {
+    setMessages(prev => [...prev, userMessage]);
+
+    // In a real implementation, you'd upload the files to the backend
+    // and then send a message about them
+    const assistantMessage: MessageWithTools = {
+      role: 'assistant',
+      content: `I see you've uploaded: ${fileNames}. I'm ready to help you analyze these files!`,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, assistantMessage]);
+  };
+
+  const clearChat = () => {
+    setMessages([]);
+  };
+
+  const refreshTools = async () => {
     try {
-      await chatApi.healthCheck()
-      setIsConnected(true)
+      const toolsResponse = await chatApi.listTools();
+      setTools(toolsResponse.tools);
     } catch (error) {
-      setIsConnected(false)
+      console.error('Failed to refresh tools:', error);
     }
-  }
+  };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="flex items-center justify-between px-6 py-3">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
-              <Drone className="h-5 w-5 text-primary-foreground" />
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
+                <Plane className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  AI Drone Data Assistant
+                </h1>
+                <p className="text-sm text-gray-500">
+                  Powered by LangChain & OpenAI
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-lg font-semibold">Canopy Copilot</h1>
-              <p className="text-sm text-muted-foreground">
-                AI Drone Data Assistant
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-center space-x-2">
-            {/* Connection Status */}
             <div className="flex items-center space-x-2">
-              <div className={cn(
-                "w-2 h-2 rounded-full",
-                isConnected ? "bg-green-500" : "bg-red-500"
-              )} />
-              <span className="text-sm text-muted-foreground">
-                {isConnected ? 'Connected' : 'Disconnected'}
-              </span>
+              <div className="text-sm text-gray-500">Tools: {tools.length}</div>
+              <button
+                onClick={refreshTools}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Refresh tools"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+              <button
+                onClick={clearChat}
+                className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                title="Clear chat"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+              <button
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Settings"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
             </div>
-
-            {/* Action Buttons */}
-            <button
-              onClick={refreshConnection}
-              className="p-2 hover:bg-secondary rounded-md transition-colors"
-              title="Refresh connection"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
-
-            <button
-              onClick={clearChat}
-              className="p-2 hover:bg-secondary rounded-md transition-colors"
-              title="Clear chat"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-
-            <button className="p-2 hover:bg-secondary rounded-md transition-colors">
-              <Settings className="h-4 w-4" />
-            </button>
           </div>
         </div>
       </header>
 
-      {/* Chat Messages */}
-      <main className="flex-1 overflow-hidden">
-        <div className="h-full overflow-y-auto scrollbar-thin">
-          <div className="max-w-4xl mx-auto">
-            {messages.map((message, index) => (
-              <ChatMessage
-                key={index}
-                message={message}
-                toolCalls={message.toolCalls}
-                className="border-b border-border/50"
-              />
-            ))}
-            
-            {isLoading && (
-              <TypingIndicator className="border-b border-border/50" />
-            )}
-            
-            <div ref={messagesEndRef} />
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Chat Area */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-lg shadow-sm border">
+              {/* Messages */}
+              <div className="h-96 overflow-y-auto p-4 space-y-4">
+                {messages.map((message, index) => (
+                  <ChatMessage
+                    key={index}
+                    message={message}
+                    toolCalls={message.toolCalls}
+                  />
+                ))}
+
+                {isLoading && <TypingIndicator />}
+
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input Area */}
+              <div className="border-t p-4">
+                <ChatInput
+                  onSendMessage={handleSendMessage}
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-sm border p-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                File Upload
+              </h3>
+              <FileUpload onFileSelect={handleFileUpload} />
+
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <h4 className="text-sm font-medium text-blue-900 mb-2">
+                  Development Info
+                </h4>
+                <div className="text-xs text-blue-700 space-y-1">
+                  <div>Session: {sessionId}</div>
+                  <div>Tools: {tools.length}</div>
+                  <div>Messages: {messages.length}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </main>
-
-      {/* Chat Input */}
-      <footer className="flex-shrink-0">
-        <div className="max-w-4xl mx-auto">
-          <ChatInput
-            onSendMessage={handleSendMessage}
-            disabled={isLoading || !isConnected}
-          />
-        </div>
-      </footer>
-
-      {/* Debug Info (in development) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed bottom-4 right-4 bg-card border border-border rounded-lg p-3 text-xs space-y-1">
-          <div>Session: {sessionId.slice(-8)}</div>
-          <div>Messages: {messages.length}</div>
-          <div>Tools: {tools.length}</div>
-          <div className="flex items-center space-x-1">
-            <div className={cn(
-              "w-2 h-2 rounded-full",
-              isConnected ? "bg-green-500" : "bg-red-500"
-            )} />
-            <span>{isConnected ? 'API Connected' : 'API Disconnected'}</span>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

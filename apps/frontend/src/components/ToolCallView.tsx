@@ -1,99 +1,92 @@
-import React, { useState } from 'react'
-import { ChevronDown, ChevronRight, Tool, Clock, CheckCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import type { ToolCall } from '@/types'
+import React, { useState } from 'react';
+import { ChevronDown, ChevronRight, Wrench } from 'lucide-react';
+
+import type { ToolCall } from '@/types';
 
 interface ToolCallViewProps {
-  toolCalls: ToolCall[]
-  className?: string
+  toolCalls: ToolCall[];
+  className?: string;
 }
 
 interface ToolCallItemProps {
-  toolCall: ToolCall
-  index: number
+  toolCall: ToolCall;
 }
 
-const ToolCallItem: React.FC<ToolCallItemProps> = ({ toolCall, index }) => {
-  const [isExpanded, setIsExpanded] = useState(false)
+const ToolCallItem: React.FC<ToolCallItemProps> = ({ toolCall }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className="border border-border rounded-lg p-3 mb-2 bg-muted/30">
-      <div 
-        className="flex items-center cursor-pointer hover:bg-muted/50 rounded p-1 -m-1"
+    <div className="border rounded-lg overflow-hidden">
+      <button
         onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
       >
-        <div className="flex items-center space-x-2 flex-1">
-          <Tool className="h-4 w-4 text-primary" />
-          <span className="font-medium text-sm">
-            {toolCall.tool.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+        <div className="flex items-center gap-2">
+          <Wrench className="h-4 w-4 text-primary" />
+          <span className="font-medium">
+            {toolCall.tool
+              .replace(/_/g, ' ')
+              .replace(/\b\w/g, l => l.toUpperCase())}
           </span>
-          <CheckCircle className="h-3 w-3 text-green-600" />
         </div>
-        {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        )}
-      </div>
+        <div className="flex items-center gap-2">
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </div>
+      </button>
 
       {isExpanded && (
-        <div className="mt-3 space-y-3">
-          {/* Input Parameters */}
-          <div>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-              Input
-            </h4>
-            <div className="bg-secondary/50 rounded p-2 text-sm">
-              {typeof toolCall.input === 'object' ? (
-                <pre className="whitespace-pre-wrap">
-                  {JSON.stringify(toolCall.input, null, 2)}
-                </pre>
-              ) : (
-                <span>{String(toolCall.input)}</span>
-              )}
-            </div>
-          </div>
-
-          {/* Output */}
-          <div>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-              Output
-            </h4>
-            <div className="bg-accent/50 rounded p-2 text-sm">
-              <pre className="whitespace-pre-wrap font-mono text-xs">
-                {toolCall.output}
+        <div className="border-t bg-gray-50 p-3">
+          <div className="space-y-2">
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">Input:</h4>
+              <pre className="text-xs bg-white p-2 rounded border overflow-x-auto">
+                {typeof toolCall.input === 'object' ? (
+                  <code>{JSON.stringify(toolCall.input, null, 2)}</code>
+                ) : (
+                  <span>{String(toolCall.input)}</span>
+                )}
               </pre>
             </div>
+            {toolCall.output && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-700">Output:</h4>
+                <pre className="text-xs bg-white p-2 rounded border overflow-x-auto">
+                  <code>{toolCall.output}</code>
+                </pre>
+              </div>
+            )}
           </div>
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-const ToolCallView: React.FC<ToolCallViewProps> = ({ toolCalls, className }) => {
-  if (!toolCalls.length) return null
+const ToolCallView: React.FC<ToolCallViewProps> = ({
+  toolCalls,
+  className,
+}) => {
+  if (!toolCalls.length) return null;
 
   return (
-    <div className={cn("mt-3", className)}>
-      <div className="flex items-center space-x-2 mb-2">
-        <Clock className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium text-muted-foreground">
+    <div className={className}>
+      <div className="flex items-center gap-2 mb-2">
+        <Wrench className="h-4 w-4 text-primary" />
+        <span className="text-sm font-medium text-gray-700">
           Tool Usage ({toolCalls.length})
         </span>
       </div>
-      
-      <div className="space-y-1">
+      <div className="space-y-2">
         {toolCalls.map((toolCall, index) => (
-          <ToolCallItem 
-            key={`${toolCall.tool}-${index}`} 
-            toolCall={toolCall} 
-            index={index} 
-          />
+          <ToolCallItem key={`${toolCall.tool}-${index}`} toolCall={toolCall} />
         ))}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ToolCallView
+export default ToolCallView;

@@ -7,7 +7,7 @@ services:
       context: ./apps/api-server
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - '8000:8000'
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - API_PORT=8000
@@ -26,7 +26,7 @@ services:
       context: ./apps/frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - '3000:3000'
     volumes:
       - ./apps/frontend:/app
       - /app/node_modules
@@ -40,7 +40,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
     restart: unless-stopped
@@ -53,7 +53,7 @@ services:
       - POSTGRES_USER=canopy
       - POSTGRES_PASSWORD=canopy123
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped

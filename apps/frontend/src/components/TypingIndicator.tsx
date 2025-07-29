@@ -1,14 +1,14 @@
-import React from 'react'
-import { Bot } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import React from 'react';
+import { Bot } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TypingIndicatorProps {
-  className?: string
+  className?: string;
 }
 
 const TypingIndicator: React.FC<TypingIndicatorProps> = ({ className }) => {
   return (
-    <div className={cn("flex gap-3 p-4", className)}>
+    <div className={cn('flex gap-3 p-4', className)}>
       {/* Avatar */}
       <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-secondary text-secondary-foreground">
         <Bot className="h-4 w-4" />
@@ -30,7 +30,7 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({ className }) => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default TypingIndicator
+export default TypingIndicator;
