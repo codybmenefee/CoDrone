@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # FastAPI Backend
+  api:
+    build:
+      context: ./apps/api-server
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - API_PORT=8000
+      - UPLOAD_DIR=/app/data/storage
+    volumes:
+      - ./data/storage:/app/data/storage
+      - ./apps/api-server:/app
+      - ./packages:/app/packages
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # Redis for session storage (Phase 2)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # PostgreSQL for data storage (Phase 2)
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=canopy_copilot
+      - POSTGRES_USER=canopy
+      - POSTGRES_PASSWORD=canopy123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:
