@@ -62,7 +62,7 @@ export const chatApi = {
     return response.data;
   },
 
-  listTools: async (): Promise<{ tools: Tool[] }> => {
+  listTools: async (): Promise<Tool[]> => {
     const response = await api.get('/tools');
     return response.data;
   },

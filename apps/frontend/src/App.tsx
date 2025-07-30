@@ -44,15 +44,15 @@ function App() {
 
         // Load available tools
         const toolsResponse = await chatApi.listTools();
-        setTools(toolsResponse.tools);
+        setTools(toolsResponse);
 
         // Add welcome message with tools info
         const welcomeMessage: MessageWithTools = {
           role: 'assistant',
           content: `Hello! I'm your AI-powered drone data analysis assistant. I can help you with:
 
-**🔧 Available Tools** (${toolsResponse.tools.length} loaded)
-${toolsResponse.tools.map(tool => `- **${tool.name.replace(/_/g, ' ')}**: ${tool.description}`).join('\n')}
+**🔧 Available Tools** (${toolsResponse.length} loaded)
+${toolsResponse.map(tool => `- **${tool.name.replace(/_/g, ' ')}**: ${tool.description}`).join('\n')}
 
 **What I can do:**
 - Analyze drone imagery and orthomosaics
@@ -150,7 +150,7 @@ Feel free to ask me anything about your drone data!`,
   const refreshTools = async () => {
     try {
       const toolsResponse = await chatApi.listTools();
-      setTools(toolsResponse.tools);
+      setTools(toolsResponse);
     } catch (error) {
       console.error('Failed to refresh tools:', error);
     }

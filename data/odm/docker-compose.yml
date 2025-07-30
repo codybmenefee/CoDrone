@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  odm:
+    image: opendronemap/odm:latest
+    container_name: codrone-odm
+    volumes:
+      - ./projects:/code/projects
+      - ./data:/code/data
+    ports:
+      - '3000:3000'
+    environment:
+      - ODM_PORT=3000
+    restart: unless-stopped

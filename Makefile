@@ -300,3 +300,37 @@ agent-clean: ## Clean up agent artifacts
 	@rm -rf .cursor/tasks/*
 	@rm -rf .cursor/contexts/*.md
 	@echo "✅ Agent artifacts cleaned"
+
+# MVP Development
+mvp-setup: ## Setup MVP development environment
+	@echo "Setting up MVP development environment..."
+	./scripts/setup-mvp.sh
+
+mvp-start: ## Start MVP development servers
+	@echo "Starting MVP development servers..."
+	./scripts/start-mvp.sh
+
+mvp-test: ## Run MVP tests
+	@echo "Running MVP tests..."
+	pytest tests/test_spatial_tools.py -v
+	pytest tests/test_processing_tools.py -v
+
+mvp-deploy: ## Deploy MVP to production
+	@echo "Deploying MVP..."
+	docker-compose -f docker-compose.mvp.yml up -d
+
+# Agent Development for MVP
+agent-context-mvp: ## Generate context for MVP agent task
+	@echo "Generating MVP agent context..."
+	@read -p "Enter MVP task name: " task; \
+	read -p "Enter MVP task description: " desc; \
+	cp .cursor/templates/context-template.md .cursor/contexts/$$task.md; \
+	sed -i '' "s/\[TASK_NAME\]/$$task/g" .cursor/contexts/$$task.md; \
+	sed -i '' "s/\[TASK_DESCRIPTION\]/$$desc/g" .cursor/contexts/$$task.md; \
+	echo "MVP context created: .cursor/contexts/$$task.md"
+
+agent-delegate-mvp: ## Delegate MVP task to background agent
+	@echo "Delegating MVP task to background agent..."
+	@read -p "Enter MVP context file: " context; \
+	read -p "Enter MVP task description: " task; \
+	cursor agent --context .cursor/contexts/$$context --task "$$task"

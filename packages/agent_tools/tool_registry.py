@@ -11,6 +11,10 @@ from typing import Optional
 
 from langchain.tools import tool
 
+# Import new MVP tools
+from .processing_tools import process_images_with_odm
+from .spatial_tools import calculate_volume_from_polygon
+
 
 @tool  # type: ignore
 def simulate_drone_analysis(input_description: str) -> str:
@@ -230,4 +234,6 @@ tools = [
     estimate_processing_time,
     generate_report_preview,
     list_available_datasets,
+    calculate_volume_from_polygon,
+    process_images_with_odm,
 ]
