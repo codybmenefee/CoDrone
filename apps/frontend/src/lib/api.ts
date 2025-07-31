@@ -5,6 +5,9 @@ import type {
   FileUpload,
   SessionInfo,
   Tool,
+  VolumeResult,
+  AreaResult,
+  ElevationStats,
 } from '@/types';
 
 const API_BASE = 'http://localhost:8000';
@@ -20,15 +23,26 @@ export interface ChatRequest {
   file_attachments?: string[];
 }
 
+export interface SpatialCalculationRequest {
+  polygon_coordinates: string;
+  measurement_name?: string;
+}
+
+export interface VolumeCalculationRequest extends SpatialCalculationRequest {
+  dsm_file_path: string;
+  base_elevation?: number;
+}
+
+export interface AreaCalculationRequest extends SpatialCalculationRequest {
+  coordinate_system?: string;
+}
+
+export interface ElevationAnalysisRequest extends SpatialCalculationRequest {
+  dsm_file_path: string;
+}
+
 export const chatApi = {
-  sendMessage: async (
-    content: string,
-    sessionId: string
-  ): Promise<ChatResponse> => {
-    const request: ChatRequest = {
-      messages: [{ role: 'user', content }],
-      session_id: sessionId,
-    };
+  sendMessage: async (request: ChatRequest): Promise<ChatResponse> => {
     const response = await api.post('/chat', request);
     return response.data;
   },
@@ -45,14 +59,17 @@ export const chatApi = {
     return response.data;
   },
 
-  listFiles: async (): Promise<{ files: FileUpload[] }> => {
+  listFiles: async (): Promise<FileUpload[]> => {
     const response = await api.get('/files');
     return response.data;
   },
 
-  listSessions: async (): Promise<{
-    sessions: Record<string, SessionInfo>;
-  }> => {
+  deleteFile: async (filename: string): Promise<{ message: string }> => {
+    const response = await api.delete(`/files/${filename}`);
+    return response.data;
+  },
+
+  listSessions: async (): Promise<Record<string, SessionInfo>> => {
     const response = await api.get('/sessions');
     return response.data;
   },
@@ -67,13 +84,25 @@ export const chatApi = {
     return response.data;
   },
 
-  healthCheck: async (): Promise<{
-    status: string;
-    timestamp: string;
-    tools_available: number;
-    sessions_active: number;
-  }> => {
+  healthCheck: async (): Promise<{ message: string }> => {
     const response = await api.get('/health');
+    return response.data;
+  },
+};
+
+export const spatialApi = {
+  calculateVolume: async (request: VolumeCalculationRequest): Promise<VolumeResult> => {
+    const response = await api.post('/api/spatial/volume', request);
+    return response.data;
+  },
+
+  calculateArea: async (request: AreaCalculationRequest): Promise<AreaResult> => {
+    const response = await api.post('/api/spatial/area', request);
+    return response.data;
+  },
+
+  analyzeElevation: async (request: ElevationAnalysisRequest): Promise<ElevationStats> => {
+    const response = await api.post('/api/spatial/elevation', request);
     return response.data;
   },
 };

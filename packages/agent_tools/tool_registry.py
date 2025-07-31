@@ -9,11 +9,15 @@ import json
 from datetime import datetime
 from typing import Optional
 
-from langchain.tools import tool
+from langchain_core.tools import tool
 
 # Import new MVP tools
 from .processing_tools import process_images_with_odm
-from .spatial_tools import calculate_volume_from_polygon
+from .spatial_tools import (
+    analyze_elevation_profile,
+    calculate_polygon_area,
+    calculate_volume_from_polygon,
+)
 
 
 @tool  # type: ignore
@@ -235,5 +239,7 @@ tools = [
     generate_report_preview,
     list_available_datasets,
     calculate_volume_from_polygon,
+    calculate_polygon_area,
+    analyze_elevation_profile,
     process_images_with_odm,
 ]

@@ -8,17 +8,17 @@ and result generation.
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from langchain.tools import tool
 
 
-@tool
+@tool  # type: ignore[misc]
 def process_images_with_odm(
     image_paths: List[str],
     processing_type: str = "orthomosaic",
     quality_settings: str = "medium",
-    project_name: str = None,
+    project_name: Optional[str] = None,
 ) -> str:
     """
     Process drone images using OpenDroneMap to generate photogrammetry outputs.
