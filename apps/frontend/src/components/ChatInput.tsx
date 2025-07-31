@@ -5,12 +5,16 @@ interface ChatInputProps {
   onSendMessage: (message: string) => void;
   disabled?: boolean;
   className?: string;
+  hasPolygons?: boolean;
+  onQuickMeasure?: (type: 'area' | 'volume') => void;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
   disabled,
   className,
+  hasPolygons = false,
+  onQuickMeasure,
 }) => {
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -73,8 +77,31 @@ const ChatInput: React.FC<ChatInputProps> = ({
         </button>
       </div>
 
-      <div className="mt-2 text-xs text-gray-500">
-        Press Enter to send, Shift+Enter for new line
+      <div className="mt-2 flex justify-between items-center">
+        <div className="text-xs text-gray-500">
+          Press Enter to send, Shift+Enter for new line
+        </div>
+
+        {hasPolygons && onQuickMeasure && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => onQuickMeasure('area')}
+              disabled={disabled}
+              className="px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              📐 Quick Area
+            </button>
+            <button
+              type="button"
+              onClick={() => onQuickMeasure('volume')}
+              disabled={disabled}
+              className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              📊 Quick Volume
+            </button>
+          </div>
+        )}
       </div>
     </form>
   );

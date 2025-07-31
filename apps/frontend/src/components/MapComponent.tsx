@@ -2,24 +2,27 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
-import 'leaflet-draw';
 import * as turf from '@turf/turf';
-import { 
-  MapComponentProps, 
-  GeoJSONPolygon, 
-  DrawnPolygon, 
-  VolumeResult,
-  AreaResult,
-  MapInteraction,
-  GeoJSONCoordinate
+
+// Import leaflet-draw after CSS
+import 'leaflet-draw';
+import {
+  MapComponentProps,
+  GeoJSONPolygon,
+  DrawnPolygon,
+  GeoJSONCoordinate,
 } from '@/types';
 
 // Fix for default markers in Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)
+  ._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconRetinaUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
 const MapComponent: React.FC<MapComponentProps> = ({
@@ -30,7 +33,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   orthomosaicUrl,
   dsmUrl,
   initialPolygons = [],
-  center = { lat: 40.7128, lng: -74.0060 }, // Default to NYC
+  center = { lat: 40.7128, lng: -74.006 }, // Default to NYC
   zoom = 13,
   height = '400px',
   enableDrawing = true,
@@ -41,29 +44,48 @@ const MapComponent: React.FC<MapComponentProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
   const drawControlRef = useRef<L.Control.Draw | null>(null);
-  
-  const [drawnPolygons, setDrawnPolygons] = useState<DrawnPolygon[]>(initialPolygons);
-  const [selectedPolygon, setSelectedPolygon] = useState<string | null>(null);
+
+  const [drawnPolygons, setDrawnPolygons] =
+    useState<DrawnPolygon[]>(initialPolygons);
+  // const [selectedPolygon, setSelectedPolygon] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Initialize map
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
+    console.log('🗺️ Initializing map component...');
+
     // Create map
-    const map = L.map(mapContainerRef.current).setView([center.lat, center.lng], zoom);
+    const map = L.map(mapContainerRef.current).setView(
+      [center.lat, center.lng],
+      zoom
+    );
     mapRef.current = map;
+
+    // Suppress touchleave warnings
+    const originalWarn = console.warn;
+    console.warn = (...args) => {
+      if (
+        args[0] &&
+        typeof args[0] === 'string' &&
+        args[0].includes('touchleave')
+      ) {
+        return; // Suppress touchleave warnings
+      }
+      originalWarn.apply(console, args);
+    };
 
     // Add base tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
+      attribution: '© OpenStreetMap contributors',
     }).addTo(map);
 
     // Add orthomosaic layer if provided
     if (orthomosaicUrl) {
       L.tileLayer(orthomosaicUrl, {
         attribution: 'Orthomosaic Data',
-        opacity: 0.8
+        opacity: 0.8,
       }).addTo(map);
     }
 
@@ -74,12 +96,13 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
     // Initialize draw control if drawing is enabled
     if (enableDrawing) {
+      console.log('✏️ Initializing drawing controls...');
       const drawControl = new L.Control.Draw({
-        edit: {
-          featureGroup: drawnItems,
-          edit: enableEditing,
-          remove: enableEditing
-        },
+        edit: enableEditing
+          ? {
+              featureGroup: drawnItems,
+            }
+          : undefined,
         draw: {
           rectangle: false,
           circle: false,
@@ -90,32 +113,44 @@ const MapComponent: React.FC<MapComponentProps> = ({
             allowIntersection: false,
             drawError: {
               color: '#e1e100',
-              message: '<strong>Error:</strong> Shape edges cannot cross!'
+              message: '<strong>Error:</strong> Shape edges cannot cross!',
             },
             shapeOptions: {
               color: '#97009c',
               weight: 3,
               opacity: 0.8,
-              fillOpacity: 0.3
-            }
-          }
-        }
+              fillOpacity: 0.3,
+            },
+          },
+        },
       });
-      
+
       map.addControl(drawControl);
       drawControlRef.current = drawControl;
+      console.log('✅ Drawing controls initialized');
     }
 
     // Set up event handlers
     setupEventHandlers(map, drawnItems);
+    console.log('✅ Map component initialized successfully');
 
     return () => {
+      // Restore original console.warn
+      console.warn = originalWarn;
+
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, [center.lat, center.lng, zoom, enableDrawing, enableEditing]);
+  }, [
+    center.lat,
+    center.lng,
+    zoom,
+    enableDrawing,
+    enableEditing,
+    orthomosaicUrl,
+  ]);
 
   // Load initial polygons
   useEffect(() => {
@@ -128,31 +163,31 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
   const setupEventHandlers = (map: L.Map, drawnItems: L.FeatureGroup) => {
     // Polygon created
-    map.on(L.Draw.Event.CREATED, (event: any) => {
-      const layer = event.layer;
+    map.on(L.Draw.Event.CREATED, (event: L.LeafletEvent) => {
+      const layer = event.layer as L.Polygon;
       const polygon = layerToGeoJSON(layer);
-      
+
       if (polygon) {
         const drawnPolygon = createDrawnPolygon(polygon, layer);
         setDrawnPolygons(prev => [...prev, drawnPolygon]);
         drawnItems.addLayer(layer);
-        
+
         // Add popup with measurement options
         addPolygonPopup(layer, drawnPolygon);
-        
+
         // Calculate area immediately
         calculateArea(polygon, drawnPolygon.name);
-        
+
         onPolygonDrawn?.(polygon);
       }
     });
 
     // Polygon edited
-    map.on(L.Draw.Event.EDITED, (event: any) => {
-      const layers = event.layers;
+    map.on(L.Draw.Event.EDITED, (event: L.LeafletEvent) => {
+      const layers = (event as unknown as { layers: L.LayerGroup }).layers;
       layers.eachLayer((layer: L.Layer) => {
         const polygon = layerToGeoJSON(layer);
-        if (polygon) {
+        if (polygon && layer instanceof L.Polygon) {
           updatePolygonInState(layer, polygon);
           onPolygonEdited?.(polygon);
         }
@@ -160,11 +195,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
     });
 
     // Polygon deleted
-    map.on(L.Draw.Event.DELETED, (event: any) => {
-      const layers = event.layers;
+    map.on(L.Draw.Event.DELETED, (event: L.LeafletEvent) => {
+      const layers = (event as unknown as { layers: L.LayerGroup }).layers;
       layers.eachLayer((layer: L.Layer) => {
         const polygon = layerToGeoJSON(layer);
-        if (polygon) {
+        if (polygon && layer instanceof L.Polygon) {
           removePolygonFromState(layer);
           onPolygonDeleted?.(polygon);
         }
@@ -175,37 +210,64 @@ const MapComponent: React.FC<MapComponentProps> = ({
   const layerToGeoJSON = (layer: L.Layer): GeoJSONPolygon | null => {
     if (layer instanceof L.Polygon) {
       const latLngs = layer.getLatLngs()[0] as L.LatLng[];
-      const coordinates: GeoJSONCoordinate[] = latLngs.map(latlng => [latlng.lng, latlng.lat]);
-      
-      // Ensure polygon is closed
-      if (coordinates.length > 0 && 
-          (coordinates[0][0] !== coordinates[coordinates.length - 1][0] || 
-           coordinates[0][1] !== coordinates[coordinates.length - 1][1])) {
-        coordinates.push([...coordinates[0]]);
+
+      // Filter out duplicate consecutive points
+      const uniqueCoordinates: GeoJSONCoordinate[] = [];
+      for (let i = 0; i < latLngs.length; i++) {
+        const coord: GeoJSONCoordinate = [latLngs[i].lng, latLngs[i].lat];
+        if (
+          i === 0 ||
+          coord[0] !== uniqueCoordinates[uniqueCoordinates.length - 1][0] ||
+          coord[1] !== uniqueCoordinates[uniqueCoordinates.length - 1][1]
+        ) {
+          uniqueCoordinates.push(coord);
+        }
       }
 
-      return {
-        type: 'Polygon',
-        coordinates: [coordinates]
-      };
+      // Ensure polygon is closed and has at least 4 points
+      if (uniqueCoordinates.length >= 3) {
+        if (
+          uniqueCoordinates[0][0] !==
+            uniqueCoordinates[uniqueCoordinates.length - 1][0] ||
+          uniqueCoordinates[0][1] !==
+            uniqueCoordinates[uniqueCoordinates.length - 1][1]
+        ) {
+          uniqueCoordinates.push([
+            uniqueCoordinates[0][0],
+            uniqueCoordinates[0][1],
+          ] as GeoJSONCoordinate);
+        }
+
+        // Ensure we have at least 4 points for a valid polygon
+        if (uniqueCoordinates.length >= 4) {
+          return {
+            type: 'Polygon',
+            coordinates: [uniqueCoordinates],
+          };
+        }
+      }
     }
     return null;
   };
 
-  const createDrawnPolygon = (polygon: GeoJSONPolygon, layer: L.Layer): DrawnPolygon => {
-    const id = 'polygon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  const createDrawnPolygon = (
+    polygon: GeoJSONPolygon,
+    layer: L.Polygon
+  ): DrawnPolygon => {
+    const id =
+      'polygon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     const now = new Date();
-    
+
     // Store layer reference on the drawn polygon
-    (layer as any)._drawnPolygonId = id;
-    
+    (layer as L.Polygon & { _drawnPolygonId?: string })._drawnPolygonId = id;
+
     return {
       id,
       polygon,
       name: `Polygon ${drawnPolygons.length + 1}`,
       color: '#97009c',
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
   };
 
@@ -213,21 +275,24 @@ const MapComponent: React.FC<MapComponentProps> = ({
     if (!drawnItemsRef.current) return;
 
     const coordinates = drawnPolygon.polygon.coordinates[0];
-    const latLngs: L.LatLng[] = coordinates.map(coord => L.latLng(coord[1], coord[0]));
-    
+    const latLngs: L.LatLng[] = coordinates.map(coord =>
+      L.latLng(coord[1], coord[0])
+    );
+
     const layer = L.polygon(latLngs, {
       color: drawnPolygon.color || '#97009c',
       weight: 3,
       opacity: 0.8,
-      fillOpacity: 0.3
+      fillOpacity: 0.3,
     });
 
-    (layer as any)._drawnPolygonId = drawnPolygon.id;
+    (layer as L.Polygon & { _drawnPolygonId?: string })._drawnPolygonId =
+      drawnPolygon.id;
     drawnItemsRef.current.addLayer(layer);
     addPolygonPopup(layer, drawnPolygon);
   };
 
-  const addPolygonPopup = (layer: L.Layer, drawnPolygon: DrawnPolygon) => {
+  const addPolygonPopup = (layer: L.Polygon, drawnPolygon: DrawnPolygon) => {
     if (!showMeasurements) return;
 
     const popupContent = `
@@ -251,110 +316,146 @@ const MapComponent: React.FC<MapComponentProps> = ({
     layer.bindPopup(popupContent);
   };
 
-  const updatePolygonInState = (layer: L.Layer, polygon: GeoJSONPolygon) => {
-    const polygonId = (layer as any)._drawnPolygonId;
+  const updatePolygonInState = (layer: L.Polygon, polygon: GeoJSONPolygon) => {
+    const polygonId = (layer as L.Polygon & { _drawnPolygonId?: string })
+      ._drawnPolygonId;
     if (!polygonId) return;
 
-    setDrawnPolygons(prev => prev.map(p => 
-      p.id === polygonId 
-        ? { ...p, polygon, updatedAt: new Date() }
-        : p
-    ));
+    setDrawnPolygons(prev =>
+      prev.map(p =>
+        p.id === polygonId ? { ...p, polygon, updatedAt: new Date() } : p
+      )
+    );
   };
 
-  const removePolygonFromState = (layer: L.Layer) => {
-    const polygonId = (layer as any)._drawnPolygonId;
+  const removePolygonFromState = (layer: L.Polygon) => {
+    const polygonId = (layer as L.Polygon & { _drawnPolygonId?: string })
+      ._drawnPolygonId;
     if (!polygonId) return;
 
     setDrawnPolygons(prev => prev.filter(p => p.id !== polygonId));
   };
 
-  const calculateArea = useCallback(async (polygon: GeoJSONPolygon, name: string) => {
-    try {
-      setIsLoading(true);
-      
-      // Use Turf.js for immediate area calculation
-      const turfPolygon = turf.polygon(polygon.coordinates);
-      const areaInSquareMeters = turf.area(turfPolygon);
-      
-      // Update polygon in state with area
-      setDrawnPolygons(prev => prev.map(p => 
-        p.polygon === polygon 
-          ? { ...p, area: areaInSquareMeters }
-          : p
-      ));
-
-      // Also send to backend for more accurate calculation
-      const { spatialApi } = await import('@/lib/api');
+  const calculateArea = useCallback(
+    async (polygon: GeoJSONPolygon, name: string) => {
       try {
-        const result = await spatialApi.calculateArea({
-          polygon_coordinates: JSON.stringify(polygon),
-          measurement_name: name,
-          coordinate_system: 'EPSG:4326'
-        });
-        
-        setDrawnPolygons(prev => prev.map(p => 
-          p.polygon === polygon 
-            ? { ...p, area: result.area_square_meters, measurement: result }
-            : p
-        ));
+        setIsLoading(true);
+
+        // Use Turf.js for immediate area calculation
+        const turfPolygon = turf.polygon(polygon.coordinates);
+        const areaInSquareMeters = turf.area(turfPolygon);
+
+        // Update polygon in state with area
+        setDrawnPolygons(prev =>
+          prev.map(p =>
+            p.polygon === polygon ? { ...p, area: areaInSquareMeters } : p
+          )
+        );
+
+        // Also send to backend for more accurate calculation
+        const { spatialApi } = await import('@/lib/api');
+        try {
+          const result = await spatialApi.calculateArea({
+            polygon_coordinates: JSON.stringify(polygon),
+            measurement_name: name,
+            coordinate_system: 'EPSG:4326',
+          });
+
+          setDrawnPolygons(prev =>
+            prev.map(p =>
+              p.polygon === polygon
+                ? { ...p, area: result.area_square_meters, measurement: result }
+                : p
+            )
+          );
+        } catch (error) {
+          console.error('Backend area calculation failed:', error);
+          // Continue with Turf.js calculation
+        }
       } catch (error) {
-        console.error('Backend area calculation failed:', error);
-        // Continue with Turf.js calculation
+        console.error('Error calculating area:', error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error calculating area:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
-  const calculateVolume = useCallback(async (polygonId: string, dsmFile?: string, baseElevation?: number) => {
-    const polygon = drawnPolygons.find(p => p.id === polygonId);
-    if (!polygon) return;
+  const calculateVolume = useCallback(
+    async (polygonId: string, dsmFile?: string, baseElevation?: number) => {
+      const polygon = drawnPolygons.find(p => p.id === polygonId);
+      if (!polygon) return;
 
-    try {
-      setIsLoading(true);
-      
-      // Integrate with the backend spatial tools
-      const { spatialApi } = await import('@/lib/api');
-      const result = await spatialApi.calculateVolume({
-        polygon_coordinates: JSON.stringify(polygon.polygon),
-        dsm_file_path: dsmFile || dsmUrl || '/default/dsm.tif',
-        base_elevation: baseElevation,
-        measurement_name: polygon.name
-      });
-      
-      setDrawnPolygons(prev => prev.map(p => 
-        p.id === polygonId 
-          ? { ...p, volume: result.volume_cubic_meters, measurement: result }
-          : p
-      ));
+      try {
+        setIsLoading(true);
 
-      onVolumeCalculated?.(result);
-    } catch (error) {
-      console.error('Error calculating volume:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [drawnPolygons, dsmUrl, onVolumeCalculated]);
+        // Integrate with the backend spatial tools
+        const { spatialApi } = await import('@/lib/api');
+        const result = await spatialApi.calculateVolume({
+          polygon_coordinates: JSON.stringify(polygon.polygon),
+          dsm_file_path: dsmFile || dsmUrl || '/default/dsm.tif',
+          base_elevation: baseElevation,
+          measurement_name: polygon.name,
+        });
+
+        setDrawnPolygons(prev =>
+          prev.map(p =>
+            p.id === polygonId
+              ? {
+                  ...p,
+                  volume: result.volume_cubic_meters,
+                  measurement: result,
+                }
+              : p
+          )
+        );
+
+        onVolumeCalculated?.(result);
+      } catch (error) {
+        console.error('Error calculating volume:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [drawnPolygons, dsmUrl, onVolumeCalculated]
+  );
 
   // Expose functions to global window for popup buttons
   useEffect(() => {
-    (window as any).measureArea = (polygonId: string) => {
+    (
+      window as Window & {
+        measureArea?: (polygonId: string) => void;
+        measureVolume?: (polygonId: string) => void;
+      }
+    ).measureArea = (polygonId: string) => {
       const polygon = drawnPolygons.find(p => p.id === polygonId);
       if (polygon) {
         calculateArea(polygon.polygon, polygon.name);
       }
     };
 
-    (window as any).measureVolume = (polygonId: string) => {
+    (
+      window as Window & {
+        measureArea?: (polygonId: string) => void;
+        measureVolume?: (polygonId: string) => void;
+      }
+    ).measureVolume = (polygonId: string) => {
       calculateVolume(polygonId);
     };
 
     return () => {
-      delete (window as any).measureArea;
-      delete (window as any).measureVolume;
+      delete (
+        window as Window & {
+          measureArea?: (polygonId: string) => void;
+          measureVolume?: (polygonId: string) => void;
+        }
+      ).measureArea;
+      delete (
+        window as Window & {
+          measureArea?: (polygonId: string) => void;
+          measureVolume?: (polygonId: string) => void;
+        }
+      ).measureVolume;
     };
   }, [drawnPolygons, calculateArea, calculateVolume]);
 
@@ -371,42 +472,47 @@ const MapComponent: React.FC<MapComponentProps> = ({
   };
 
   // Public API for external components
-  const addPolygon = useCallback((polygon: GeoJSONPolygon, name?: string) => {
-    if (!drawnItemsRef.current) return;
+  // const addPolygon = useCallback((polygon: GeoJSONPolygon, name?: string) => {
+  //   if (!drawnItemsRef.current) return;
 
-    const drawnPolygon = createDrawnPolygon(polygon, {} as L.Layer);
-    if (name) drawnPolygon.name = name;
-    
-    setDrawnPolygons(prev => [...prev, drawnPolygon]);
-    addPolygonToMap(drawnPolygon);
-  }, []);
+  //   const drawnPolygon = createDrawnPolygon(polygon, {} as L.Layer);
+  //   if (name) drawnPolygon.name = name;
 
-  const clearPolygons = useCallback(() => {
-    if (drawnItemsRef.current) {
-      drawnItemsRef.current.clearLayers();
-    }
-    setDrawnPolygons([]);
-  }, []);
+  //   setDrawnPolygons(prev => [...prev, drawnPolygon]);
+  //   addPolygonToMap(drawnPolygon);
+  // }, []);
 
-  const zoomToPolygon = useCallback((polygonId: string) => {
-    const polygon = drawnPolygons.find(p => p.id === polygonId);
-    if (!polygon || !mapRef.current) return;
+  // const clearPolygons = useCallback(() => {
+  //   if (drawnItemsRef.current) {
+  //     drawnItemsRef.current.clearLayers();
+  //   }
+  //   setDrawnPolygons([]);
+  // }, []);
 
-    const coordinates = polygon.polygon.coordinates[0];
-    const latLngs: L.LatLng[] = coordinates.map(coord => L.latLng(coord[1], coord[0]));
-    const bounds = L.latLngBounds(latLngs);
-    
-    mapRef.current.fitBounds(bounds, { padding: [20, 20] });
-  }, [drawnPolygons]);
+  const zoomToPolygon = useCallback(
+    (polygonId: string) => {
+      const polygon = drawnPolygons.find(p => p.id === polygonId);
+      if (!polygon || !mapRef.current) return;
+
+      const coordinates = polygon.polygon.coordinates[0];
+      const latLngs: L.LatLng[] = coordinates.map(coord =>
+        L.latLng(coord[1], coord[0])
+      );
+      const bounds = L.latLngBounds(latLngs);
+
+      mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+    },
+    [drawnPolygons]
+  );
 
   return (
     <div className="relative">
-      <div 
-        ref={mapContainerRef} 
+      <div
+        ref={mapContainerRef}
         style={{ height, width: '100%' }}
         className="rounded-lg border border-gray-300"
       />
-      
+
       {isLoading && (
         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
           <div className="bg-white px-4 py-2 rounded-lg flex items-center gap-2">
@@ -419,20 +525,26 @@ const MapComponent: React.FC<MapComponentProps> = ({
       {/* Polygon list panel */}
       {drawnPolygons.length > 0 && (
         <div className="absolute top-2 right-2 bg-white rounded-lg shadow-lg p-3 max-w-xs">
-          <h4 className="font-semibold text-sm mb-2">Drawn Polygons ({drawnPolygons.length})</h4>
+          <h4 className="font-semibold text-sm mb-2">
+            Drawn Polygons ({drawnPolygons.length})
+          </h4>
           <div className="space-y-2 max-h-40 overflow-y-auto">
-            {drawnPolygons.map((polygon) => (
-              <div 
+            {drawnPolygons.map(polygon => (
+              <div
                 key={polygon.id}
                 className="flex items-center justify-between text-xs p-2 bg-gray-50 rounded"
               >
                 <div>
                   <div className="font-medium">{polygon.name}</div>
                   {polygon.area && (
-                    <div className="text-gray-600">{formatArea(polygon.area)}</div>
+                    <div className="text-gray-600">
+                      {formatArea(polygon.area)}
+                    </div>
                   )}
                   {polygon.volume && (
-                    <div className="text-gray-600">{formatVolume(polygon.volume)}</div>
+                    <div className="text-gray-600">
+                      {formatVolume(polygon.volume)}
+                    </div>
                   )}
                 </div>
                 <button

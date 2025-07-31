@@ -1,6 +1,6 @@
 import React from 'react';
 import { BarChart3, TrendingUp, Info, Download, MapPin } from 'lucide-react';
-import { VolumeResult, AreaResult, ElevationStats } from '@/types';
+import { VolumeResult, AreaResult } from '@/types';
 
 interface VolumeResultsViewProps {
   result: VolumeResult | AreaResult | null;
@@ -13,14 +13,16 @@ const VolumeResultsView: React.FC<VolumeResultsViewProps> = ({
   result,
   onExport,
   onZoomToPolygon,
-  className = ''
+  className = '',
 }) => {
   if (!result) {
     return (
       <div className={`p-4 text-center text-gray-500 ${className}`}>
         <BarChart3 className="h-8 w-8 mx-auto mb-2 text-gray-400" />
         <p>No measurement results to display</p>
-        <p className="text-sm">Draw a polygon and calculate volume or area to see results</p>
+        <p className="text-sm">
+          Draw a polygon and calculate volume or area to see results
+        </p>
       </div>
     );
   }
@@ -29,9 +31,9 @@ const VolumeResultsView: React.FC<VolumeResultsViewProps> = ({
   const isAreaResult = 'area_hectares' in result;
 
   const formatNumber = (value: number, decimals: number = 2): string => {
-    return value.toLocaleString(undefined, { 
-      minimumFractionDigits: decimals, 
-      maximumFractionDigits: decimals 
+    return value.toLocaleString(undefined, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     });
   };
 
@@ -113,7 +115,9 @@ const VolumeResultsView: React.FC<VolumeResultsViewProps> = ({
 
         {volumeResult.base_elevation_meters !== undefined && (
           <div className="bg-gray-50 p-3 rounded-lg">
-            <div className="text-sm font-medium text-gray-700">Base Elevation</div>
+            <div className="text-sm font-medium text-gray-700">
+              Base Elevation
+            </div>
             <div className="text-lg font-semibold text-gray-900">
               {formatNumber(volumeResult.base_elevation_meters)} m
             </div>
@@ -125,9 +129,11 @@ const VolumeResultsView: React.FC<VolumeResultsViewProps> = ({
 
         <div className="bg-gray-50 p-3 rounded-lg">
           <div className="text-sm font-medium text-gray-700">Confidence</div>
-          <div className={`inline-flex px-2 py-1 rounded-full text-sm font-medium ${
-            getConfidenceColor(volumeResult.metadata.confidence_score)
-          }`}>
+          <div
+            className={`inline-flex px-2 py-1 rounded-full text-sm font-medium ${getConfidenceColor(
+              volumeResult.metadata.confidence_score
+            )}`}
+          >
             {(volumeResult.metadata.confidence_score * 100).toFixed(0)}%
           </div>
         </div>
@@ -244,10 +250,11 @@ const VolumeResultsView: React.FC<VolumeResultsViewProps> = ({
             {result.measurement_name}
           </h3>
           <p className="text-sm text-gray-600">
-            {isVolumeResult ? 'Volume Measurement' : 'Area Measurement'} • {formatDate(result.timestamp)}
+            {isVolumeResult ? 'Volume Measurement' : 'Area Measurement'} •{' '}
+            {formatDate(result.timestamp)}
           </p>
         </div>
-        
+
         <div className="flex gap-2">
           {onZoomToPolygon && (
             <button
@@ -282,7 +289,12 @@ const VolumeResultsView: React.FC<VolumeResultsViewProps> = ({
           <Info className="h-3 w-3" />
           <span>Method: {result.metadata.calculation_method}</span>
           <span>•</span>
-          <span>CRS: {isVolumeResult ? (result as VolumeResult).metadata.coordinate_system : (result as AreaResult).coordinate_system}</span>
+          <span>
+            CRS:{' '}
+            {isVolumeResult
+              ? (result as VolumeResult).metadata.coordinate_system
+              : (result as AreaResult).coordinate_system}
+          </span>
           {isVolumeResult && (result as VolumeResult).metadata.dsm_file && (
             <>
               <span>•</span>
@@ -292,7 +304,9 @@ const VolumeResultsView: React.FC<VolumeResultsViewProps> = ({
           {isVolumeResult && (result as VolumeResult).metadata.note && (
             <>
               <span>•</span>
-              <span className="text-yellow-600">{(result as VolumeResult).metadata.note}</span>
+              <span className="text-yellow-600">
+                {(result as VolumeResult).metadata.note}
+              </span>
             </>
           )}
         </div>

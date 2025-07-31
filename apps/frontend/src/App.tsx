@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plane, Settings, Trash2, RefreshCw, Map } from 'lucide-react';
+import { Plane, Settings, Trash2, Map } from 'lucide-react';
 import { generateSessionId } from '@/lib/utils';
 import { chatApi } from '@/lib/api';
 import ChatMessage from './components/ChatMessage';
@@ -10,7 +10,6 @@ import MapComponent from './components/MapComponent';
 import VolumeResultsView from './components/VolumeResultsView';
 import type {
   ChatMessage as ChatMessageType,
-  ChatResponse,
   Tool,
   GeoJSONPolygon,
   VolumeResult,
@@ -19,7 +18,11 @@ import type {
 } from '@/types';
 
 interface MessageWithTools extends ChatMessageType {
-  toolCalls?: any[];
+  toolCalls?: Array<{
+    tool: string;
+    input: Record<string, unknown>;
+    output: string;
+  }>;
 }
 
 function App() {
@@ -29,8 +32,10 @@ function App() {
   const [sessionId] = useState(() => generateSessionId());
   const [showMap, setShowMap] = useState(true);
   const [drawnPolygons, setDrawnPolygons] = useState<DrawnPolygon[]>([]);
-  const [latestMeasurement, setLatestMeasurement] = useState<VolumeResult | AreaResult | null>(null);
-  const [mapCenter, setMapCenter] = useState({ lat: 40.7128, lng: -74.0060 });
+  const [latestMeasurement, setLatestMeasurement] = useState<
+    VolumeResult | AreaResult | null
+  >(null);
+  const [mapCenter] = useState({ lat: 40.7128, lng: -74.006 });
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -91,7 +96,8 @@ Feel free to draw on the map or ask me anything about your drone data!`,
         // Add error message for user
         const errorMessage: MessageWithTools = {
           role: 'assistant',
-          content: '⚠️ Unable to connect to the backend service. Please ensure the API server is running on port 8000.',
+          content:
+            '⚠️ Unable to connect to the backend service. Please ensure the API server is running on port 8000.',
           timestamp: new Date(),
         };
         setMessages([errorMessage]);
@@ -101,7 +107,10 @@ Feel free to draw on the map or ask me anything about your drone data!`,
     initializeApp();
   }, []);
 
-  const handleSendMessage = async (content: string, attachments: string[] = []) => {
+  const handleSendMessage = async (
+    content: string,
+    attachments: string[] = []
+  ) => {
     const userMessage: MessageWithTools = {
       role: 'user',
       content,
@@ -112,10 +121,34 @@ Feel free to draw on the map or ask me anything about your drone data!`,
     setIsLoading(true);
 
     try {
-      // Include polygon data in the request if available
-      const contextualContent = drawnPolygons.length > 0 
-        ? `${content}\n\nContext: I have ${drawnPolygons.length} polygon(s) drawn on the map: ${drawnPolygons.map(p => `${p.name} (${p.area ? Math.round(p.area) + ' m²' : 'no area calculated'})`).join(', ')}`
-        : content;
+      // Detect spatial measurement requests and automatically include polygon coordinates
+      const spatialKeywords = [
+        'measure',
+        'calculate',
+        'area',
+        'volume',
+        'polygon',
+        'that polygon',
+        'this polygon',
+      ];
+      const isSpatialRequest = spatialKeywords.some(keyword =>
+        content.toLowerCase().includes(keyword.toLowerCase())
+      );
+
+      let contextualContent = content;
+
+      if (isSpatialRequest && drawnPolygons.length > 0) {
+        const latestPolygon = drawnPolygons[drawnPolygons.length - 1];
+        contextualContent = `${content}
+
+**Available Polygon Data:**
+Latest polygon: ${latestPolygon.name}
+Coordinates: ${JSON.stringify(latestPolygon.polygon)}
+
+You can use these coordinates for spatial calculations. If you need a different polygon, please specify which one.`;
+      } else if (drawnPolygons.length > 0) {
+        contextualContent = `${content}\n\nContext: I have ${drawnPolygons.length} polygon(s) drawn on the map: ${drawnPolygons.map(p => `${p.name} (${p.area ? Math.round(p.area) + ' m²' : 'no area calculated'})`).join(', ')}`;
+      }
 
       const response = await chatApi.sendMessage({
         messages: [
@@ -146,7 +179,8 @@ Feel free to draw on the map or ask me anything about your drone data!`,
       console.error('Chat error:', error);
       const errorMessage: MessageWithTools = {
         role: 'assistant',
-        content: '❌ Sorry, I encountered an error processing your message. Please try again.',
+        content:
+          '❌ Sorry, I encountered an error processing your message. Please try again.',
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -155,32 +189,47 @@ Feel free to draw on the map or ask me anything about your drone data!`,
     }
   };
 
-  const processSpatialToolCalls = async (toolCalls: any[]) => {
+  const processSpatialToolCalls = async (
+    toolCalls: Array<{
+      tool: string;
+      input: Record<string, unknown>;
+      output: string;
+    }>
+  ) => {
     for (const toolCall of toolCalls) {
-      if (toolCall.tool === 'calculate_volume_from_polygon' || 
-          toolCall.tool === 'calculate_polygon_area') {
+      if (
+        toolCall.tool === 'calculate_volume_from_polygon' ||
+        toolCall.tool === 'calculate_polygon_area'
+      ) {
         try {
           const result = JSON.parse(toolCall.output);
-          if (result.volume_cubic_meters !== undefined || result.area_square_meters !== undefined) {
+          if (
+            result.volume_cubic_meters !== undefined ||
+            result.area_square_meters !== undefined
+          ) {
             setLatestMeasurement(result);
-            
+
             // Update the corresponding polygon with measurement data
             if (result.coordinates) {
-              setDrawnPolygons(prev => prev.map(polygon => {
-                // Simple coordinate matching - in production, you'd want more robust matching
-                const coordsMatch = JSON.stringify(polygon.polygon.coordinates[0].slice(0, 3)) === 
-                                  JSON.stringify(result.coordinates.slice(0, 3));
-                if (coordsMatch) {
-                  return {
-                    ...polygon,
-                    area: result.area_square_meters,
-                    volume: result.volume_cubic_meters,
-                    measurement: result,
-                    updatedAt: new Date()
-                  };
-                }
-                return polygon;
-              }));
+              setDrawnPolygons(prev =>
+                prev.map(polygon => {
+                  // Simple coordinate matching - in production, you'd want more robust matching
+                  const coordsMatch =
+                    JSON.stringify(
+                      polygon.polygon.coordinates[0].slice(0, 3)
+                    ) === JSON.stringify(result.coordinates.slice(0, 3));
+                  if (coordsMatch) {
+                    return {
+                      ...polygon,
+                      area: result.area_square_meters,
+                      volume: result.volume_cubic_meters,
+                      measurement: result,
+                      updatedAt: new Date(),
+                    };
+                  }
+                  return polygon;
+                })
+              );
             }
           }
         } catch (error) {
@@ -203,7 +252,7 @@ Feel free to draw on the map or ask me anything about your drone data!`,
       if (response.ok) {
         const result = await response.json();
         setUploadedFiles(prev => [...prev, result.filepath]);
-        
+
         // Add file upload notification to chat
         const fileMessage: MessageWithTools = {
           role: 'assistant',
@@ -213,7 +262,10 @@ Feel free to draw on the map or ask me anything about your drone data!`,
         setMessages(prev => [...prev, fileMessage]);
 
         // If it's a DSM or orthomosaic file, offer to use it with the map
-        if (file.name.toLowerCase().includes('dsm') || file.name.toLowerCase().includes('ortho')) {
+        if (
+          file.name.toLowerCase().includes('dsm') ||
+          file.name.toLowerCase().includes('ortho')
+        ) {
           const suggestionMessage: MessageWithTools = {
             role: 'assistant',
             content: `🗺️ I detected this might be a DSM or orthomosaic file. You can now draw polygons on the map and I'll use this file for volume calculations!`,
@@ -235,13 +287,25 @@ Feel free to draw on the map or ask me anything about your drone data!`,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    
+
     setDrawnPolygons(prev => [...prev, newPolygon]);
 
-    // Add a chat message about the new polygon
+    // Add a chat message about the new polygon with coordinates
     const polygonMessage: MessageWithTools = {
       role: 'assistant',
-      content: `📐 New polygon drawn! I can now calculate its area or volume. Just ask me something like "calculate the area of that polygon" or "measure the volume using the DSM data".`,
+      content: `📐 New polygon drawn! I can now calculate its area or volume.
+
+**Polygon Coordinates (GeoJSON):**
+\`\`\`json
+${JSON.stringify(polygon, null, 2)}
+\`\`\`
+
+You can now ask me to:
+- "Calculate the area of this polygon"
+- "Measure the volume using DSM data"
+- "Analyze the elevation profile"
+
+The coordinates are ready for spatial analysis!`,
       timestamp: new Date(),
     };
     setMessages(prev => [...prev, polygonMessage]);
@@ -249,19 +313,23 @@ Feel free to draw on the map or ask me anything about your drone data!`,
 
   const handlePolygonEdited = (polygon: GeoJSONPolygon) => {
     // Update the polygon in state and recalculate measurements
-    setDrawnPolygons(prev => prev.map(p => {
-      // Simple matching - you might want more robust polygon matching
-      if (JSON.stringify(p.polygon.coordinates[0].slice(0, 3)) === 
-          JSON.stringify(polygon.coordinates[0].slice(0, 3))) {
-        return { ...p, polygon, updatedAt: new Date() };
-      }
-      return p;
-    }));
+    setDrawnPolygons(prev =>
+      prev.map(p => {
+        // Simple matching - you might want more robust polygon matching
+        if (
+          JSON.stringify(p.polygon.coordinates[0].slice(0, 3)) ===
+          JSON.stringify(polygon.coordinates[0].slice(0, 3))
+        ) {
+          return { ...p, polygon, updatedAt: new Date() };
+        }
+        return p;
+      })
+    );
   };
 
   const handleVolumeCalculated = (result: VolumeResult) => {
     setLatestMeasurement(result);
-    
+
     // Add measurement result to chat
     const resultMessage: MessageWithTools = {
       role: 'assistant',
@@ -279,6 +347,18 @@ Confidence: ${(result.metadata.confidence_score * 100).toFixed(0)}%`,
       timestamp: new Date(),
     };
     setMessages(prev => [...prev, resultMessage]);
+  };
+
+  const handleQuickMeasure = (type: 'area' | 'volume') => {
+    if (drawnPolygons.length === 0) return;
+
+    const latestPolygon = drawnPolygons[drawnPolygons.length - 1];
+    const message =
+      type === 'area'
+        ? `Calculate the area of the latest polygon (${latestPolygon.name})`
+        : `Calculate the volume of the latest polygon (${latestPolygon.name}) using DSM data`;
+
+    handleSendMessage(message);
   };
 
   const clearChat = () => {
@@ -321,8 +401,8 @@ Confidence: ${(result.metadata.confidence_score * 100).toFixed(0)}%`,
               <button
                 onClick={() => setShowMap(!showMap)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  showMap 
-                    ? 'bg-blue-500 text-white' 
+                  showMap
+                    ? 'bg-blue-500 text-white'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
@@ -346,7 +426,9 @@ Confidence: ${(result.metadata.confidence_score * 100).toFixed(0)}%`,
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className={`grid gap-8 ${showMap ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 lg:grid-cols-4'}`}>
+        <div
+          className={`grid gap-8 ${showMap ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 lg:grid-cols-4'}`}
+        >
           {/* Map Section */}
           {showMap && (
             <div className="xl:col-span-1">
@@ -403,23 +485,27 @@ Confidence: ${(result.metadata.confidence_score * 100).toFixed(0)}%`,
                 <ChatInput
                   onSendMessage={handleSendMessage}
                   disabled={isLoading}
-                  placeholder={drawnPolygons.length > 0 
-                    ? "Ask me to measure the area or volume of your polygon..."
-                    : "Draw a polygon on the map or ask me about drone data analysis..."
-                  }
+                  hasPolygons={drawnPolygons.length > 0}
+                  onQuickMeasure={handleQuickMeasure}
                 />
               </div>
             </div>
           </div>
 
           {/* Sidebar */}
-          <div className={showMap ? 'xl:col-span-2 grid xl:grid-cols-2 gap-4' : 'lg:col-span-1'}>
+          <div
+            className={
+              showMap
+                ? 'xl:col-span-2 grid xl:grid-cols-2 gap-4'
+                : 'lg:col-span-1'
+            }
+          >
             <div className="bg-white rounded-lg shadow-sm border p-4">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
                 File Upload
               </h3>
               <FileUpload onFileSelect={handleFileUpload} />
-              
+
               {uploadedFiles.length > 0 && (
                 <div className="mt-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">
@@ -427,7 +513,10 @@ Confidence: ${(result.metadata.confidence_score * 100).toFixed(0)}%`,
                   </h4>
                   <div className="space-y-1">
                     {uploadedFiles.slice(-3).map((filepath, index) => (
-                      <div key={index} className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                      <div
+                        key={index}
+                        className="text-xs text-gray-600 bg-gray-50 p-2 rounded"
+                      >
                         {filepath.split('/').pop()}
                       </div>
                     ))}
@@ -445,7 +534,9 @@ Confidence: ${(result.metadata.confidence_score * 100).toFixed(0)}%`,
                   <div>Messages: {messages.length}</div>
                   <div>Polygons: {drawnPolygons.length}</div>
                   {latestMeasurement && (
-                    <div>Last Measurement: {latestMeasurement.measurement_name}</div>
+                    <div>
+                      Last Measurement: {latestMeasurement.measurement_name}
+                    </div>
                   )}
                 </div>
               </div>
@@ -458,15 +549,15 @@ Confidence: ${(result.metadata.confidence_score * 100).toFixed(0)}%`,
                   Drawn Polygons ({drawnPolygons.length})
                 </h3>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {drawnPolygons.map((polygon) => (
+                  {drawnPolygons.map(polygon => (
                     <div key={polygon.id} className="p-3 bg-gray-50 rounded-lg">
                       <div className="font-medium text-sm">{polygon.name}</div>
                       {polygon.area && (
                         <div className="text-xs text-gray-600">
-                          Area: {polygon.area < 10000 
-                            ? `${polygon.area.toFixed(1)} m²` 
-                            : `${(polygon.area / 10000).toFixed(2)} ha`
-                          }
+                          Area:{' '}
+                          {polygon.area < 10000
+                            ? `${polygon.area.toFixed(1)} m²`
+                            : `${(polygon.area / 10000).toFixed(2)} ha`}
                         </div>
                       )}
                       {polygon.volume && (

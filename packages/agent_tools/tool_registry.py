@@ -9,14 +9,14 @@ import json
 from datetime import datetime
 from typing import Optional
 
-from langchain.tools import tool
+from langchain_core.tools import tool
 
 # Import new MVP tools
 from .processing_tools import process_images_with_odm
 from .spatial_tools import (
-    calculate_volume_from_polygon,
+    analyze_elevation_profile,
     calculate_polygon_area,
-    analyze_elevation_profile
+    calculate_volume_from_polygon,
 )
 
 

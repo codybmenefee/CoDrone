@@ -60,7 +60,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                 if (!isInline) {
                   return (
                     <SyntaxHighlighter
-                      style={oneDark as any}
+                      style={oneDark as Record<string, unknown>}
                       language={match[1]}
                       PreTag="div"
                     >

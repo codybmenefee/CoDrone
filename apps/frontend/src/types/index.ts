@@ -6,7 +6,7 @@ export interface ChatMessage {
 
 export interface ToolCall {
   tool: string;
-  input: Record<string, any>;
+  input: Record<string, unknown>;
   output: string;
 }
 
@@ -33,7 +33,7 @@ export interface SessionInfo {
 export interface Tool {
   name: string;
   description: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
 }
 
 // Spatial data types
@@ -59,7 +59,7 @@ export interface GeoJSONFeature {
   properties: {
     name?: string;
     description?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -150,7 +150,11 @@ export interface DrawnPolygon {
 
 // Map interaction types
 export interface MapInteraction {
-  type: 'polygon_drawn' | 'polygon_edited' | 'polygon_deleted' | 'measurement_requested';
+  type:
+    | 'polygon_drawn'
+    | 'polygon_edited'
+    | 'polygon_deleted'
+    | 'measurement_requested';
   polygon?: GeoJSONPolygon;
   polygonId?: string;
   timestamp: Date;
@@ -192,7 +196,11 @@ export interface SpatialAnalysis {
 // Natural language command types
 export interface SpatialCommand {
   original_text: string;
-  command_type: 'measure_volume' | 'calculate_area' | 'analyze_elevation' | 'draw_polygon';
+  command_type:
+    | 'measure_volume'
+    | 'calculate_area'
+    | 'analyze_elevation'
+    | 'draw_polygon';
   polygon?: GeoJSONPolygon;
   polygon_id?: string;
   parameters: {
