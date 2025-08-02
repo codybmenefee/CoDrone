@@ -47,6 +47,29 @@ fi
 # Create data directory
 mkdir -p data/storage
 
+# Function to check and kill processes on specific ports
+check_and_kill_port() {
+    local port=$1
+    local service_name=$2
+
+    echo "🔍 Checking port $port for conflicts..."
+    local pids=$(lsof -ti:$port 2>/dev/null)
+
+    if [ ! -z "$pids" ]; then
+        echo "⚠️  Port $port is in use by process(es): $pids"
+        echo "🔄 Killing existing $service_name processes..."
+        echo "$pids" | xargs kill -9 2>/dev/null
+        sleep 1
+        echo "✅ Port $port cleared"
+    else
+        echo "✅ Port $port is available"
+    fi
+}
+
+# Check and clear ports before starting
+check_and_kill_port 8000 "backend"
+check_and_kill_port 3000 "frontend"
+
 echo "🚀 Starting backend and frontend servers..."
 
 # Function to kill background processes on exit

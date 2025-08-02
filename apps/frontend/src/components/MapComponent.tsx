@@ -50,174 +50,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   // const [selectedPolygon, setSelectedPolygon] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Initialize map
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
-
-    console.log('🗺️ Initializing map component...');
-
-    // Create map
-    const map = L.map(mapContainerRef.current).setView(
-      [center.lat, center.lng],
-      zoom
-    );
-    mapRef.current = map;
-
-    // Suppress touchleave warnings
-    const originalWarn = console.warn;
-    console.warn = (...args) => {
-      if (
-        args[0] &&
-        typeof args[0] === 'string' &&
-        args[0].includes('touchleave')
-      ) {
-        return; // Suppress touchleave warnings
-      }
-      originalWarn.apply(console, args);
-    };
-
-    // Add base tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-    }).addTo(map);
-
-    // Add orthomosaic layer if provided
-    if (orthomosaicUrl) {
-      L.tileLayer(orthomosaicUrl, {
-        attribution: 'Orthomosaic Data',
-        opacity: 0.8,
-      }).addTo(map);
-    }
-
-    // Initialize feature group for drawn items
-    const drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-    drawnItemsRef.current = drawnItems;
-
-    // Initialize draw control if drawing is enabled
-    if (enableDrawing) {
-      console.log('✏️ Initializing drawing controls...');
-      const drawControl = new L.Control.Draw({
-        edit: enableEditing
-          ? {
-              featureGroup: drawnItems,
-            }
-          : undefined,
-        draw: {
-          rectangle: false,
-          circle: false,
-          circlemarker: false,
-          marker: false,
-          polyline: false,
-          polygon: {
-            allowIntersection: false,
-            drawError: {
-              color: '#e1e100',
-              message: '<strong>Error:</strong> Shape edges cannot cross!',
-            },
-            shapeOptions: {
-              color: '#97009c',
-              weight: 3,
-              opacity: 0.8,
-              fillOpacity: 0.3,
-            },
-          },
-        },
-      });
-
-      map.addControl(drawControl);
-      drawControlRef.current = drawControl;
-      console.log('✅ Drawing controls initialized');
-    }
-
-    // Set up event handlers
-    setupEventHandlers(map, drawnItems);
-    console.log('✅ Map component initialized successfully');
-
-    return () => {
-      // Restore original console.warn
-      console.warn = originalWarn;
-
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, [
-    center.lat,
-    center.lng,
-    zoom,
-    enableDrawing,
-    enableEditing,
-    orthomosaicUrl,
-    setupEventHandlers,
-  ]);
-
-  // Load initial polygons
-  useEffect(() => {
-    if (!drawnItemsRef.current || initialPolygons.length === 0) return;
-
-    initialPolygons.forEach(drawnPolygon => {
-      addPolygonToMap(drawnPolygon);
-    });
-  }, [initialPolygons, addPolygonToMap]);
-
-  const setupEventHandlers = useCallback(
-    (map: L.Map, drawnItems: L.FeatureGroup) => {
-      // Polygon created
-      map.on(L.Draw.Event.CREATED, (event: L.LeafletEvent) => {
-        const layer = event.layer as L.Polygon;
-        const polygon = layerToGeoJSON(layer);
-
-        if (polygon) {
-          const drawnPolygon = createDrawnPolygon(polygon, layer);
-          setDrawnPolygons(prev => [...prev, drawnPolygon]);
-          drawnItems.addLayer(layer);
-
-          // Add popup with measurement options
-          addPolygonPopup(layer, drawnPolygon);
-
-          // Calculate area immediately
-          calculateArea(polygon, drawnPolygon.name);
-
-          onPolygonDrawn?.(polygon);
-        }
-      });
-
-      // Polygon edited
-      map.on(L.Draw.Event.EDITED, (event: L.LeafletEvent) => {
-        const layers = (event as unknown as { layers: L.LayerGroup }).layers;
-        layers.eachLayer((layer: L.Layer) => {
-          const polygon = layerToGeoJSON(layer);
-          if (polygon && layer instanceof L.Polygon) {
-            updatePolygonInState(layer, polygon);
-            onPolygonEdited?.(polygon);
-          }
-        });
-      });
-
-      // Polygon deleted
-      map.on(L.Draw.Event.DELETED, (event: L.LeafletEvent) => {
-        const layers = (event as unknown as { layers: L.LayerGroup }).layers;
-        layers.eachLayer((layer: L.Layer) => {
-          const polygon = layerToGeoJSON(layer);
-          if (polygon && layer instanceof L.Polygon) {
-            removePolygonFromState(layer);
-            onPolygonDeleted?.(polygon);
-          }
-        });
-      });
-    },
-    [
-      onPolygonDrawn,
-      onPolygonEdited,
-      onPolygonDeleted,
-      calculateArea,
-      createDrawnPolygon,
-      addPolygonPopup,
-    ]
-  );
-
+  // Helper functions (declared before use)
   const layerToGeoJSON = (layer: L.Layer): GeoJSONPolygon | null => {
     if (layer instanceof L.Polygon) {
       const latLngs = layer.getLatLngs()[0] as L.LatLng[];
@@ -281,30 +114,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
       updatedAt: now,
     };
   };
-
-  const addPolygonToMap = useCallback(
-    (drawnPolygon: DrawnPolygon) => {
-      if (!drawnItemsRef.current) return;
-
-      const coordinates = drawnPolygon.polygon.coordinates[0];
-      const latLngs: L.LatLng[] = coordinates.map(coord =>
-        L.latLng(coord[1], coord[0])
-      );
-
-      const layer = L.polygon(latLngs, {
-        color: drawnPolygon.color || '#97009c',
-        weight: 3,
-        opacity: 0.8,
-        fillOpacity: 0.3,
-      });
-
-      (layer as L.Polygon & { _drawnPolygonId?: string })._drawnPolygonId =
-        drawnPolygon.id;
-      drawnItemsRef.current.addLayer(layer);
-      addPolygonPopup(layer, drawnPolygon);
-    },
-    [addPolygonPopup]
-  );
 
   const addPolygonPopup = (layer: L.Polygon, drawnPolygon: DrawnPolygon) => {
     if (!showMeasurements) return;
@@ -394,6 +203,187 @@ const MapComponent: React.FC<MapComponentProps> = ({
     },
     []
   );
+
+  const addPolygonToMap = useCallback(
+    (drawnPolygon: DrawnPolygon) => {
+      if (!drawnItemsRef.current) return;
+
+      const coordinates = drawnPolygon.polygon.coordinates[0];
+      const latLngs: L.LatLng[] = coordinates.map(coord =>
+        L.latLng(coord[1], coord[0])
+      );
+
+      const layer = L.polygon(latLngs, {
+        color: drawnPolygon.color || '#97009c',
+        weight: 3,
+        opacity: 0.8,
+        fillOpacity: 0.3,
+      });
+
+      (layer as L.Polygon & { _drawnPolygonId?: string })._drawnPolygonId =
+        drawnPolygon.id;
+      drawnItemsRef.current.addLayer(layer);
+      addPolygonPopup(layer, drawnPolygon);
+    },
+    []
+  );
+
+  const setupEventHandlers = useCallback(
+    (map: L.Map, drawnItems: L.FeatureGroup) => {
+      // Polygon created
+      map.on(L.Draw.Event.CREATED, (event: L.LeafletEvent) => {
+        const layer = event.layer as L.Polygon;
+        const polygon = layerToGeoJSON(layer);
+
+        if (polygon) {
+          const drawnPolygon = createDrawnPolygon(polygon, layer);
+          setDrawnPolygons(prev => [...prev, drawnPolygon]);
+          drawnItems.addLayer(layer);
+
+          // Add popup with measurement options
+          addPolygonPopup(layer, drawnPolygon);
+
+          // Calculate area immediately
+          calculateArea(polygon, drawnPolygon.name);
+
+          onPolygonDrawn?.(polygon);
+        }
+      });
+
+      // Polygon edited
+      map.on(L.Draw.Event.EDITED, (event: L.LeafletEvent) => {
+        const layers = (event as unknown as { layers: L.LayerGroup }).layers;
+        layers.eachLayer((layer: L.Layer) => {
+          const polygon = layerToGeoJSON(layer);
+          if (polygon && layer instanceof L.Polygon) {
+            updatePolygonInState(layer, polygon);
+            onPolygonEdited?.(polygon);
+          }
+        });
+      });
+
+      // Polygon deleted
+      map.on(L.Draw.Event.DELETED, (event: L.LeafletEvent) => {
+        const layers = (event as unknown as { layers: L.LayerGroup }).layers;
+        layers.eachLayer((layer: L.Layer) => {
+          const polygon = layerToGeoJSON(layer);
+          if (polygon && layer instanceof L.Polygon) {
+            removePolygonFromState(layer);
+            onPolygonDeleted?.(polygon);
+          }
+        });
+      });
+    },
+    [onPolygonDrawn, onPolygonEdited, onPolygonDeleted, calculateArea]
+  );
+
+  // Initialize map
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    console.log('🗺️ Initializing map component...');
+
+    try {
+      // Create map
+      const map = L.map(mapContainerRef.current).setView(
+        [center.lat, center.lng],
+        zoom
+      );
+      mapRef.current = map;
+
+      // Suppress touchleave warnings
+      const originalWarn = console.warn;
+      console.warn = (...args) => {
+        if (
+          args[0] &&
+          typeof args[0] === 'string' &&
+          args[0].includes('touchleave')
+        ) {
+          return; // Suppress touchleave warnings
+        }
+        originalWarn.apply(console, args);
+      };
+
+      // Add base tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+      }).addTo(map);
+
+      // Add orthomosaic layer if provided
+      if (orthomosaicUrl) {
+        L.tileLayer(orthomosaicUrl, {
+          attribution: 'Orthomosaic Data',
+          opacity: 0.8,
+        }).addTo(map);
+      }
+
+      // Initialize feature group for drawn items
+      const drawnItems = new L.FeatureGroup();
+      map.addLayer(drawnItems);
+      drawnItemsRef.current = drawnItems;
+
+      // Initialize draw control if drawing is enabled
+      if (enableDrawing) {
+        console.log('✏️ Initializing drawing controls...');
+        const drawControl = new L.Control.Draw({
+          edit: enableEditing
+            ? {
+                featureGroup: drawnItems,
+              }
+            : undefined,
+          draw: {
+            rectangle: false,
+            circle: false,
+            circlemarker: false,
+            marker: false,
+            polyline: false,
+            polygon: {
+              allowIntersection: false,
+              drawError: {
+                color: '#e1e100',
+                message: '<strong>Error:</strong> Shape edges cannot cross!',
+              },
+              shapeOptions: {
+                color: '#97009c',
+                weight: 3,
+                opacity: 0.8,
+                fillOpacity: 0.3,
+              },
+            },
+          },
+        });
+
+        map.addControl(drawControl);
+        drawControlRef.current = drawControl;
+        console.log('✅ Drawing controls initialized');
+      }
+
+      // Set up event handlers
+      setupEventHandlers(map, drawnItems);
+      console.log('✅ Map component initialized successfully');
+
+      return () => {
+        // Restore original console.warn
+        console.warn = originalWarn;
+
+        if (mapRef.current) {
+          mapRef.current.remove();
+          mapRef.current = null;
+        }
+      };
+    } catch (error) {
+      console.error('Error initializing map:', error);
+    }
+  }, [center.lat, center.lng, zoom, enableDrawing, enableEditing, orthomosaicUrl, setupEventHandlers]);
+
+  // Load initial polygons
+  useEffect(() => {
+    if (!drawnItemsRef.current || initialPolygons.length === 0) return;
+
+    initialPolygons.forEach(drawnPolygon => {
+      addPolygonToMap(drawnPolygon);
+    });
+  }, [initialPolygons, addPolygonToMap]);
 
   const calculateVolume = useCallback(
     async (polygonId: string, dsmFile?: string, baseElevation?: number) => {

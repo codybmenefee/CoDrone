@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import ChatInput from './components/ChatInput';
 import ChatMessage from './components/ChatMessage';
 import MapComponent from './components/MapComponent';
+import MapErrorBoundary from './components/MapErrorBoundary';
 import FileUpload from './components/FileUpload';
 import VolumeResultsView from './components/VolumeResultsView';
 import TypingIndicator from './components/TypingIndicator';
@@ -330,20 +331,22 @@ function App() {
                 </h2>
               </div>
 
-              <MapComponent
-                onPolygonDrawn={handlePolygonDrawn}
-                onPolygonEdited={handlePolygonEdited}
-                onPolygonDeleted={handlePolygonDeleted}
-                initialPolygons={drawnPolygons}
-                center={mapCenter}
-                zoom={13}
-                height="400px"
-                enableDrawing={true}
-                enableEditing={true}
-                showMeasurements={true}
-                orthomosaicUrl={orthomosaicUrl}
-                dsmUrl={dsmUrl}
-              />
+              <MapErrorBoundary>
+                <MapComponent
+                  onPolygonDrawn={handlePolygonDrawn}
+                  onPolygonEdited={handlePolygonEdited}
+                  onPolygonDeleted={handlePolygonDeleted}
+                  initialPolygons={drawnPolygons}
+                  center={mapCenter}
+                  zoom={13}
+                  height="400px"
+                  enableDrawing={true}
+                  enableEditing={true}
+                  showMeasurements={true}
+                  orthomosaicUrl={orthomosaicUrl}
+                  dsmUrl={dsmUrl}
+                />
+              </MapErrorBoundary>
             </div>
 
             {/* Results Display */}
