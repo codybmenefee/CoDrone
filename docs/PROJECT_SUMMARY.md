@@ -141,7 +141,7 @@ echo "OPENAI_API_KEY=sk-your-key-here" >> .env
 
 ### 🎭 Demo Experience
 
-### Sample Conversations:
+### Sample Conversations
 
 ```text
 User: "What datasets are available?"
