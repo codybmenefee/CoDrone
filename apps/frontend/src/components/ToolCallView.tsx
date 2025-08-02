@@ -1,90 +1,272 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Wrench } from 'lucide-react';
+import { ChevronDown, ChevronRight, MapPin, Ruler, BarChart3, FileText, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import VolumeResultsView from './VolumeResultsView';
 
-import type { ToolCall } from '@/types';
+interface ToolCall {
+  id: string;
+  toolName: string;
+  parameters: Record<string, unknown>;
+  result?: unknown;
+  status: 'pending' | 'completed' | 'error';
+  timestamp: string;
+}
 
 interface ToolCallViewProps {
-  toolCalls: ToolCall[];
+  toolCall: ToolCall;
+  showParameters?: boolean;
+  showResult?: boolean;
   className?: string;
 }
 
-interface ToolCallItemProps {
-  toolCall: ToolCall;
-}
-
-const ToolCallItem: React.FC<ToolCallItemProps> = ({ toolCall }) => {
+const ToolCallView: React.FC<ToolCallViewProps> = ({
+  toolCall,
+  showParameters = true,
+  showResult = true,
+  className = '',
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showRawData, setShowRawData] = useState(false);
+
+  const getToolIcon = (toolName: string) => {
+    switch (toolName) {
+      case 'calculateVolumeFromPolygon':
+        return <BarChart3 className="h-4 w-4" />;
+      case 'calculatePolygonArea':
+        return <Ruler className="h-4 w-4" />;
+      case 'analyzeElevationProfile':
+        return <MapPin className="h-4 w-4" />;
+      case 'processImagesWithODM':
+        return <FileText className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
+
+  const getStatusColor = (status: ToolCall['status']) => {
+    switch (status) {
+      case 'completed':
+        return 'text-green-600 bg-green-50';
+      case 'error':
+        return 'text-red-600 bg-red-50';
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  const getStatusIcon = (status: ToolCall['status']) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'error':
+        return <AlertCircle className="h-4 w-4" />;
+      case 'pending':
+        return <Clock className="h-4 w-4 animate-pulse" />;
+      default:
+        return null;
+    }
+  };
+
+  const formatToolName = (toolName: string) => {
+    return toolName
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, str => str.toUpperCase())
+      .trim();
+  };
+
+  const formatParameterValue = (key: string, value: unknown): string => {
+    if (key === 'polygonCoordinates' && typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (parsed.type === 'Polygon') {
+          const coordsCount = parsed.coordinates[0]?.length || 0;
+          return `Polygon with ${coordsCount} coordinates`;
+        }
+      } catch {
+        return value.substring(0, 50) + '...';
+      }
+    }
+    
+    if (typeof value === 'string' && value.length > 50) {
+      return value.substring(0, 50) + '...';
+    }
+    
+    return String(value);
+  };
+
+  const renderResult = () => {
+    if (!toolCall.result || toolCall.status !== 'completed') {
+      return null;
+    }
+
+    const result = toolCall.result as any;
+
+    // Handle error results
+    if (result.error) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded p-3">
+          <div className="text-red-800 font-medium">Error</div>
+          <div className="text-red-700 text-sm mt-1">{result.error}</div>
+        </div>
+      );
+    }
+
+    // Special rendering for spatial analysis results
+    if (toolCall.toolName === 'calculateVolumeFromPolygon' && result.volumeCubicMeters !== undefined) {
+      return (
+        <VolumeResultsView 
+          results={result}
+          showExport={true}
+          className="mt-2"
+        />
+      );
+    }
+
+    if (toolCall.toolName === 'calculatePolygonArea' && result.areaSquareMeters !== undefined) {
+      return (
+        <div className="bg-green-50 border border-green-200 rounded p-3">
+          <div className="font-medium text-green-800 mb-2">Area Calculation Results</div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Area (m²):</span>
+              <span className="ml-2 font-medium">{result.areaSquareMeters.toLocaleString()}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Area (hectares):</span>
+              <span className="ml-2 font-medium">{result.areaHectares.toFixed(2)}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Area (acres):</span>
+              <span className="ml-2 font-medium">{result.areaAcres.toFixed(2)}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Perimeter (m):</span>
+              <span className="ml-2 font-medium">{result.perimeterMeters.toFixed(2)}</span>
+            </div>
+          </div>
+          {result.measurementName && (
+            <div className="mt-2 text-xs text-gray-600">
+              Measurement: {result.measurementName}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (toolCall.toolName === 'analyzeElevationProfile' && result.elevationStats) {
+      return (
+        <div className="bg-blue-50 border border-blue-200 rounded p-3">
+          <div className="font-medium text-blue-800 mb-2">Elevation Analysis Results</div>
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Min:</span>
+              <span className="ml-2 font-medium">{result.elevationStats.min.toFixed(2)}m</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Max:</span>
+              <span className="ml-2 font-medium">{result.elevationStats.max.toFixed(2)}m</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Mean:</span>
+              <span className="ml-2 font-medium">{result.elevationStats.mean.toFixed(2)}m</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Median:</span>
+              <span className="ml-2 font-medium">{result.elevationStats.median.toFixed(2)}m</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Std Dev:</span>
+              <span className="ml-2 font-medium">{result.elevationStats.std.toFixed(2)}m</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Range:</span>
+              <span className="ml-2 font-medium">{result.elevationStats.range?.toFixed(2)}m</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Default result rendering
+    return (
+      <div className="bg-gray-50 border border-gray-200 rounded p-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="font-medium text-gray-800">Result</span>
+          <button
+            onClick={() => setShowRawData(!showRawData)}
+            className="text-xs text-gray-600 hover:text-gray-800"
+          >
+            {showRawData ? 'Hide' : 'Show'} Raw Data
+          </button>
+        </div>
+        
+        {showRawData ? (
+          <pre className="text-xs text-gray-700 overflow-auto max-h-32 bg-white p-2 rounded border">
+            {JSON.stringify(result, null, 2)}
+          </pre>
+        ) : (
+          <div className="text-sm text-gray-700">
+            {typeof result === 'string' ? result : 'Tool executed successfully'}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <button
+    <div className={`border rounded-lg overflow-hidden ${className}`}>
+      {/* Tool Header */}
+      <div 
+        className={`flex items-center gap-2 p-3 cursor-pointer hover:bg-gray-50 ${getStatusColor(toolCall.status)}`}
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full p-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
       >
-        <div className="flex items-center gap-2">
-          <Wrench className="h-4 w-4 text-primary" />
-          <span className="font-medium">
-            {toolCall.tool
-              .replace(/_/g, ' ')
-              .replace(/\b\w/g, l => l.toUpperCase())}
-          </span>
+        <div className="flex items-center gap-2 flex-1">
+          {getToolIcon(toolCall.toolName)}
+          {getStatusIcon(toolCall.status)}
+          <span className="font-medium">{formatToolName(toolCall.toolName)}</span>
         </div>
+        
         <div className="flex items-center gap-2">
+          <span className="text-xs opacity-75">
+            {new Date(toolCall.timestamp).toLocaleTimeString()}
+          </span>
           {isExpanded ? (
             <ChevronDown className="h-4 w-4" />
           ) : (
             <ChevronRight className="h-4 w-4" />
           )}
         </div>
-      </button>
+      </div>
 
+      {/* Expanded Content */}
       {isExpanded && (
-        <div className="border-t bg-gray-50 p-3">
-          <div className="space-y-2">
-            <div>
-              <h4 className="text-sm font-medium text-gray-700">Input:</h4>
-              <pre className="text-xs bg-white p-2 rounded border overflow-x-auto">
-                {typeof toolCall.input === 'object' ? (
-                  <code>{JSON.stringify(toolCall.input, null, 2)}</code>
-                ) : (
-                  <span>{String(toolCall.input)}</span>
-                )}
-              </pre>
-            </div>
-            {toolCall.output && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-700">Output:</h4>
-                <pre className="text-xs bg-white p-2 rounded border overflow-x-auto">
-                  <code>{toolCall.output}</code>
-                </pre>
+        <div className="border-t">
+          {/* Parameters */}
+          {showParameters && Object.keys(toolCall.parameters).length > 0 && (
+            <div className="p-3 border-b bg-gray-50">
+              <div className="font-medium text-gray-700 mb-2">Parameters</div>
+              <div className="space-y-1 text-sm">
+                {Object.entries(toolCall.parameters).map(([key, value]) => (
+                  <div key={key} className="flex">
+                    <span className="text-gray-600 w-1/3">{key}:</span>
+                    <span className="text-gray-800 w-2/3 break-words">
+                      {formatParameterValue(key, value)}
+                    </span>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Result */}
+          {showResult && (
+            <div className="p-3">
+              {renderResult()}
+            </div>
+          )}
         </div>
       )}
-    </div>
-  );
-};
-
-const ToolCallView: React.FC<ToolCallViewProps> = ({
-  toolCalls,
-  className,
-}) => {
-  if (!toolCalls.length) return null;
-
-  return (
-    <div className={className}>
-      <div className="flex items-center gap-2 mb-2">
-        <Wrench className="h-4 w-4 text-primary" />
-        <span className="text-sm font-medium text-gray-700">
-          Tool Usage ({toolCalls.length})
-        </span>
-      </div>
-      <div className="space-y-2">
-        {toolCalls.map((toolCall, index) => (
-          <ToolCallItem key={`${toolCall.tool}-${index}`} toolCall={toolCall} />
-        ))}
-      </div>
     </div>
   );
 };

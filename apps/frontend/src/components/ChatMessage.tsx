@@ -1,95 +1,206 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { User, Bot } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { User, Bot, Clock, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import ToolCallView from './ToolCallView';
-import type { ChatMessage as ChatMessageType, ToolCall } from '@/types';
+
+interface ToolCall {
+  id: string;
+  toolName: string;
+  parameters: Record<string, unknown>;
+  result?: unknown;
+  status: 'pending' | 'completed' | 'error';
+  timestamp: string;
+}
 
 interface ChatMessageProps {
-  message: ChatMessageType;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp?: string;
   toolCalls?: ToolCall[];
+  isStreaming?: boolean;
   className?: string;
+  metadata?: {
+    attachments?: string[];
+    sessionId?: string;
+    modelUsed?: string;
+    tokensUsed?: number;
+    processingTime?: number;
+  };
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({
-  message,
+  role,
+  content,
+  timestamp,
   toolCalls = [],
-  className,
+  isStreaming = false,
+  className = '',
+  metadata,
 }) => {
-  const isUser = message.role === 'user';
+  const isUser = role === 'user';
+  const isSystem = role === 'system';
+  
+  const formatTimestamp = (ts?: string) => {
+    if (!ts) return '';
+    return new Date(ts).toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  const getStatusIcon = (status: ToolCall['status']) => {
+    switch (status) {
+      case 'pending':
+        return <Loader className="h-3 w-3 animate-spin text-yellow-500" />;
+      case 'completed':
+        return <CheckCircle className="h-3 w-3 text-green-500" />;
+      case 'error':
+        return <AlertCircle className="h-3 w-3 text-red-500" />;
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div
-      className={cn(
-        'flex gap-4 p-4 rounded-lg',
-        isUser ? 'bg-blue-50' : 'bg-gray-50',
-        className
-      )}
-    >
+    <div className={`flex gap-3 p-4 ${isUser ? 'flex-row-reverse' : ''} ${className}`}>
       {/* Avatar */}
-      <div
-        className={cn(
-          'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
-          isUser ? 'bg-blue-500' : 'bg-gray-600'
-        )}
-      >
-        {isUser ? (
-          <User className="h-4 w-4 text-white" />
-        ) : (
-          <Bot className="h-4 w-4 text-white" />
-        )}
+      <div className="flex-shrink-0">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+          isUser 
+            ? 'bg-blue-500 text-white' 
+            : isSystem 
+              ? 'bg-gray-500 text-white'
+              : 'bg-green-500 text-white'
+        }`}>
+          {isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
+        </div>
       </div>
 
       {/* Message Content */}
-      <div className="flex-1 min-w-0">
-        {/* Role Label */}
-        <div className="text-sm font-medium text-gray-700 mb-2">
-          {isUser ? 'You' : 'AI Assistant'}
+      <div className={`flex-1 ${isUser ? 'max-w-[80%]' : ''}`}>
+        {/* Message Header */}
+        <div className={`flex items-center gap-2 mb-1 ${isUser ? 'justify-end' : ''}`}>
+          <span className="text-sm font-medium text-gray-900">
+            {isUser ? 'You' : isSystem ? 'System' : 'Assistant'}
+          </span>
+          {timestamp && (
+            <span className="text-xs text-gray-500 flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {formatTimestamp(timestamp)}
+            </span>
+          )}
+          {isStreaming && (
+            <span className="text-xs text-blue-500 flex items-center gap-1">
+              <Loader className="h-3 w-3 animate-spin" />
+              Thinking...
+            </span>
+          )}
         </div>
 
-        {/* Message Text */}
-        <div className="prose prose-sm max-w-none">
-          <ReactMarkdown
-            components={{
-              code({ className, children, ...props }) {
-                const match = /language-(\w+)/.exec(className || '');
-                const isInline = !match;
-
-                if (!isInline) {
-                  return (
-                    <SyntaxHighlighter
-                      style={oneDark as Record<string, unknown>}
-                      language={match[1]}
-                      PreTag="div"
-                    >
-                      {String(children).replace(/\n$/, '')}
-                    </SyntaxHighlighter>
-                  );
-                }
-
-                return (
-                  <code {...props} className={className}>
-                    {children}
-                  </code>
-                );
-              },
-            }}
-          >
-            {message.content}
-          </ReactMarkdown>
-        </div>
-
-        {/* Tool Calls - only show for assistant messages */}
-        {!isUser && toolCalls.length > 0 && (
-          <ToolCallView toolCalls={toolCalls} className="mt-3" />
+        {/* File Attachments */}
+        {metadata?.attachments && metadata.attachments.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1">
+            {metadata.attachments.map((filename, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+              >
+                📎 {filename}
+              </span>
+            ))}
+          </div>
         )}
 
-        {/* Timestamp */}
-        {message.timestamp && (
-          <div className="text-xs text-gray-500 mt-2">
-            {new Date(message.timestamp).toLocaleTimeString()}
+        {/* Message Bubble */}
+        <div className={`rounded-lg px-4 py-2 ${
+          isUser 
+            ? 'bg-blue-500 text-white ml-auto' 
+            : isSystem
+              ? 'bg-gray-100 text-gray-800'
+              : 'bg-gray-100 text-gray-800'
+        }`}>
+          {/* Main Content */}
+          <div className="prose prose-sm max-w-none">
+            {isUser ? (
+              <div className="whitespace-pre-wrap break-words">{content}</div>
+            ) : (
+              <ReactMarkdown
+                components={{
+                  code({ node, inline, className, children, ...props }) {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return !inline && match ? (
+                      <SyntaxHighlighter
+                        style={tomorrow}
+                        language={match[1]}
+                        PreTag="div"
+                        {...props}
+                      >
+                        {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
+                    ) : (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    );
+                  },
+                }}
+              >
+                {content}
+              </ReactMarkdown>
+            )}
+          </div>
+
+          {/* Streaming indicator */}
+          {isStreaming && !isUser && (
+            <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
+              <div className="flex space-x-1">
+                <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
+                <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Tool Calls */}
+        {toolCalls.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {toolCalls.map((toolCall) => (
+              <div key={toolCall.id} className="border rounded-lg p-3 bg-white">
+                <div className="flex items-center gap-2 mb-2">
+                  {getStatusIcon(toolCall.status)}
+                  <span className="text-sm font-medium text-gray-700">
+                    {toolCall.toolName}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {formatTimestamp(toolCall.timestamp)}
+                  </span>
+                </div>
+                
+                <ToolCallView 
+                  toolCall={toolCall}
+                  showParameters={true}
+                  showResult={toolCall.status === 'completed'}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Message Metadata */}
+        {metadata && (metadata.modelUsed || metadata.tokensUsed || metadata.processingTime) && (
+          <div className="mt-2 text-xs text-gray-400 flex items-center gap-3">
+            {metadata.modelUsed && (
+              <span>Model: {metadata.modelUsed}</span>
+            )}
+            {metadata.tokensUsed && (
+              <span>Tokens: {metadata.tokensUsed}</span>
+            )}
+            {metadata.processingTime && (
+              <span>Time: {metadata.processingTime}ms</span>
+            )}
           </div>
         )}
       </div>
