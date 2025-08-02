@@ -510,7 +510,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   );
 
   return (
-    <div className="relative">
+    <div className="relative w-full h-full">
       <div
         ref={mapContainerRef}
         style={{ height, width: '100%' }}

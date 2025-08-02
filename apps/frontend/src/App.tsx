@@ -1,12 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { nanoid } from 'nanoid';
-import ChatInput from './components/ChatInput';
-import ChatMessage from './components/ChatMessage';
-import MapComponent from './components/MapComponent';
-import MapErrorBoundary from './components/MapErrorBoundary';
-import FileUpload from './components/FileUpload';
-import VolumeResultsView from './components/VolumeResultsView';
-import TypingIndicator from './components/TypingIndicator';
+import AppLayout from './components/layout/AppLayout';
+import Sidebar from './components/layout/Sidebar';
+import ChatPanel from './components/layout/ChatPanel';
+import MainContent from './components/layout/MainContent';
 import {
   uploadFiles,
   getFiles,
@@ -193,7 +190,7 @@ function App() {
 
     const geoJsonPolygon: GeoJSONPolygon = {
       type: 'Polygon',
-      coordinates: [polygon.coordinates],
+      coordinates: polygon.polygon.coordinates,
     };
 
     try {
@@ -202,7 +199,6 @@ function App() {
       if (type === 'area') {
         const result = await calculateArea({
           polygonCoordinates: JSON.stringify(geoJsonPolygon),
-          attachments: attachedFiles,
         });
 
         // setAreaResults(prev => [...prev, result]);
@@ -210,22 +206,27 @@ function App() {
         const message: ChatMessage = {
           id: nanoid(),
           role: 'system',
-          content: `Area calculation completed: ${result.area.toFixed(2)} square meters`,
+          content: `Area calculation completed: ${result.area_square_meters.toFixed(2)} square meters`,
           timestamp: new Date().toISOString(),
         };
         setMessages(prev => [...prev, message]);
       } else if (type === 'volume') {
+        const dsmFile = uploadedFiles.find(f => f.type === 'dsm');
+        if (!dsmFile) {
+          throw new Error('DSM file required for volume calculation');
+        }
+
         const result = await calculateVolume({
           polygonCoordinates: JSON.stringify(geoJsonPolygon),
-          attachments: attachedFiles,
+          dsmFilePath: dsmFile.filepath,
         });
 
-        setVolumeResults(prev => [...prev, result]);
+        setVolumeResults(prev => [...prev, result as VolumeResult]);
 
         const message: ChatMessage = {
           id: nanoid(),
           role: 'system',
-          content: `Volume calculation completed: ${result.volume.toFixed(2)} cubic meters`,
+          content: `Volume calculation completed: ${result.volume_cubic_meters.toFixed(2)} cubic meters`,
           timestamp: new Date().toISOString(),
         };
         setMessages(prev => [...prev, message]);
@@ -245,172 +246,41 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            CoDrone - AI-First Drone Data Copilot
-          </h1>
-          <p className="text-gray-600">
-            Analyze drone data with AI-powered spatial analysis and interactive
-            mapping
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column: Chat Interface */}
-          <div className="space-y-4">
-            {/* Chat Messages */}
-            <div className="bg-white rounded-lg shadow-sm border h-96 overflow-y-auto">
-              <div className="p-4 border-b">
-                <h2 className="text-lg font-semibold text-gray-800">
-                  AI Assistant
-                </h2>
-              </div>
-
-              <div className="flex-1 overflow-y-auto">
-                {messages.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500">
-                    <p>👋 Welcome to CoDrone!</p>
-                    <p className="text-sm mt-1">
-                      Upload drone data, draw polygons on the map, and ask me to
-                      analyze them.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {messages.map(message => (
-                      <ChatMessage
-                        key={message.id}
-                        role={message.role}
-                        content={message.content}
-                        timestamp={message.timestamp}
-                        toolCalls={message.metadata?.toolCalls || []}
-                        metadata={message.metadata}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {isLoading && <TypingIndicator />}
-              </div>
-            </div>
-
-            {/* Chat Input */}
-            <ChatInput
-              onSendMessage={handleSendMessage}
-              onNewMessage={handleNewMessage}
-              onToolCall={handleToolCall}
-              disabled={isLoading}
-              hasPolygons={drawnPolygons.length > 0}
-              onQuickMeasure={handleQuickMeasure}
-              sessionId={sessionId}
-              onFileSelect={handleFileSelect}
-              attachedFiles={attachedFiles}
-              onRemoveFile={handleRemoveFile}
-              className="bg-white rounded-lg shadow-sm border p-4"
-            />
-
-            {/* File Upload */}
-            <FileUpload
-              onFileSelect={handleFileSelect}
-              className="bg-white rounded-lg shadow-sm border p-4"
-              accept=".tif,.tiff,.jpg,.jpeg,.png,.laz,.las,.ply"
-              multiple
-            />
-          </div>
-
-          {/* Right Column: Map and Results */}
-          <div className="space-y-4">
-            {/* Interactive Map */}
-            <div className="bg-white rounded-lg shadow-sm border">
-              <div className="p-4 border-b">
-                <h2 className="text-lg font-semibold text-gray-800">
-                  Interactive Map
-                </h2>
-              </div>
-
-              <MapErrorBoundary>
-                <MapComponent
-                  onPolygonDrawn={handlePolygonDrawn}
-                  onPolygonEdited={handlePolygonEdited}
-                  onPolygonDeleted={handlePolygonDeleted}
-                  initialPolygons={drawnPolygons}
-                  center={mapCenter}
-                  zoom={13}
-                  height="400px"
-                  enableDrawing={true}
-                  enableEditing={true}
-                  showMeasurements={true}
-                  orthomosaicUrl={orthomosaicUrl}
-                  dsmUrl={dsmUrl}
-                />
-              </MapErrorBoundary>
-            </div>
-
-            {/* Results Display */}
-            {volumeResults.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border">
-                <div className="p-4 border-b">
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    Volume Results
-                  </h2>
-                </div>
-                <div className="p-4 space-y-4">
-                  {volumeResults.slice(-3).map((result, index) => (
-                    <VolumeResultsView
-                      key={index}
-                      results={result}
-                      showExport={true}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Uploaded Files */}
-            {uploadedFiles.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border">
-                <div className="p-4 border-b">
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    Uploaded Files ({uploadedFiles.length})
-                  </h2>
-                </div>
-                <div className="p-4">
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {uploadedFiles.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
-                      >
-                        <span className="flex items-center gap-2">
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              file.type === 'dsm'
-                                ? 'bg-blue-500'
-                                : file.type === 'orthomosaic'
-                                  ? 'bg-green-500'
-                                  : file.type === 'pointcloud'
-                                    ? 'bg-purple-500'
-                                    : 'bg-gray-500'
-                            }`}
-                          ></span>
-                          {file.filename}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {(file.size / (1024 * 1024)).toFixed(1)} MB
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <AppLayout
+      sidebar={
+        <Sidebar
+          uploadedFiles={uploadedFiles}
+          volumeResults={volumeResults}
+        />
+      }
+      main={
+        <MainContent
+          drawnPolygons={drawnPolygons}
+          onPolygonDrawn={handlePolygonDrawn}
+          onPolygonEdited={handlePolygonEdited}
+          onPolygonDeleted={handlePolygonDeleted}
+          mapCenter={mapCenter}
+          orthomosaicUrl={orthomosaicUrl}
+          dsmUrl={dsmUrl}
+        />
+      }
+      chat={
+        <ChatPanel
+          messages={messages}
+          isLoading={isLoading}
+          sessionId={sessionId}
+          attachedFiles={attachedFiles}
+          hasPolygons={drawnPolygons.length > 0}
+          volumeResults={volumeResults}
+          onSendMessage={handleSendMessage}
+          onNewMessage={handleNewMessage}
+          onToolCall={handleToolCall}
+          onFileSelect={handleFileSelect}
+          onRemoveFile={handleRemoveFile}
+          onQuickMeasure={handleQuickMeasure}
+        />
+      }
+    />
   );
 }
 
