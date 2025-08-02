@@ -13,6 +13,15 @@ from langchain_core.tools import tool
 
 # Import new MVP tools
 from .processing_tools import process_images_with_odm
+
+# Import report generation tools
+from .report_tools import (
+    create_custom_report,
+    export_report_to_format,
+    generate_ai_powered_report,
+    generate_report_from_template,
+    list_available_report_templates,
+)
 from .spatial_tools import (
     analyze_elevation_profile,
     calculate_polygon_area,
@@ -242,4 +251,10 @@ tools = [
     calculate_polygon_area,
     analyze_elevation_profile,
     process_images_with_odm,
+    # Report generation tools
+    generate_report_from_template,
+    create_custom_report,
+    list_available_report_templates,
+    generate_ai_powered_report,
+    export_report_to_format,
 ]

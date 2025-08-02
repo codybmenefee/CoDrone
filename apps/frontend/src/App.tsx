@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plane, Settings, Trash2, Map } from 'lucide-react';
+import { Plane, Settings, Trash2, Map, FileText } from 'lucide-react';
 import { generateSessionId } from '@/lib/utils';
 import { chatApi } from '@/lib/api';
 import ChatMessage from './components/ChatMessage';
@@ -8,6 +8,7 @@ import FileUpload from './components/FileUpload';
 import TypingIndicator from './components/TypingIndicator';
 import MapComponent from './components/MapComponent';
 import VolumeResultsView from './components/VolumeResultsView';
+import ReportBuilder from './components/ReportBuilder';
 import type {
   ChatMessage as ChatMessageType,
   Tool,
@@ -16,6 +17,7 @@ import type {
   AreaResult,
   DrawnPolygon,
 } from '@/types';
+import type { DroneDataContext } from './types/report';
 
 interface MessageWithTools extends ChatMessageType {
   toolCalls?: Array<{
@@ -31,6 +33,7 @@ function App() {
   const [tools, setTools] = useState<Tool[]>([]);
   const [sessionId] = useState(() => generateSessionId());
   const [showMap, setShowMap] = useState(true);
+  const [showReportBuilder, setShowReportBuilder] = useState(false);
   const [drawnPolygons, setDrawnPolygons] = useState<DrawnPolygon[]>([]);
   const [latestMeasurement, setLatestMeasurement] = useState<
     VolumeResult | AreaResult | null
@@ -377,6 +380,37 @@ Confidence: ${(result.metadata.confidence_score * 100).toFixed(0)}%`,
     URL.revokeObjectURL(url);
   };
 
+  const handleSaveReport = async (html: string, css: string) => {
+    console.log('Saving report:', { html, css });
+    // Here you would typically save to backend
+    alert('Report saved successfully!');
+  };
+
+  const handleExportReport = (format: 'pdf' | 'html') => {
+    console.log('Exporting report as:', format);
+    // Export functionality is handled within ReportBuilder
+  };
+
+  const getReportDataContext = (): DroneDataContext => {
+    return {
+      analysisResults: {
+        area: latestMeasurement?.area_square_meters,
+        volume: latestMeasurement?.volume_cubic_meters,
+      },
+      metadata: {
+        location: 'Survey Location',
+        date: new Date().toLocaleDateString(),
+        resolution: 'High Resolution',
+        imageCount: uploadedFiles.length,
+      },
+      visualizations: {
+        mapUrl: 'https://example.com/map',
+        chartData: [],
+        imageUrls: uploadedFiles,
+      },
+    };
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -398,6 +432,17 @@ Confidence: ${(result.metadata.confidence_score * 100).toFixed(0)}%`,
             </div>
 
             <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowReportBuilder(!showReportBuilder)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  showReportBuilder
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <FileText className="h-4 w-4 inline mr-1" />
+                {showReportBuilder ? 'Hide Report Builder' : 'Report Builder'}
+              </button>
               <button
                 onClick={() => setShowMap(!showMap)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -426,155 +471,171 @@ Confidence: ${(result.metadata.confidence_score * 100).toFixed(0)}%`,
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div
-          className={`grid gap-8 ${showMap ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 lg:grid-cols-4'}`}
-        >
-          {/* Map Section */}
-          {showMap && (
-            <div className="xl:col-span-1">
-              <div className="bg-white rounded-lg shadow-sm border p-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Interactive Map
-                </h3>
-                <MapComponent
-                  onPolygonDrawn={handlePolygonDrawn}
-                  onPolygonEdited={handlePolygonEdited}
-                  onVolumeCalculated={handleVolumeCalculated}
-                  center={mapCenter}
-                  zoom={13}
-                  height="500px"
-                  enableDrawing={true}
-                  enableEditing={true}
-                  showMeasurements={true}
-                  initialPolygons={drawnPolygons}
-                />
-              </div>
-
-              {/* Volume Results */}
-              {latestMeasurement && (
-                <div className="mt-4">
-                  <VolumeResultsView
-                    result={latestMeasurement}
-                    onExport={exportMeasurement}
+        {showReportBuilder ? (
+          <div className="h-screen">
+            <ReportBuilder
+              templateId="default"
+              dataContext={getReportDataContext()}
+              onSave={handleSaveReport}
+              onExport={handleExportReport}
+            />
+          </div>
+        ) : (
+          <div
+            className={`grid gap-8 ${showMap ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 lg:grid-cols-4'}`}
+          >
+            {/* Map Section */}
+            {showMap && (
+              <div className="xl:col-span-1">
+                <div className="bg-white rounded-lg shadow-sm border p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">
+                    Interactive Map
+                  </h3>
+                  <MapComponent
+                    onPolygonDrawn={handlePolygonDrawn}
+                    onPolygonEdited={handlePolygonEdited}
+                    onVolumeCalculated={handleVolumeCalculated}
+                    center={mapCenter}
+                    zoom={13}
+                    height="500px"
+                    enableDrawing={true}
+                    enableEditing={true}
+                    showMeasurements={true}
+                    initialPolygons={drawnPolygons}
                   />
                 </div>
-              )}
-            </div>
-          )}
 
-          {/* Chat Section */}
-          <div className={showMap ? 'xl:col-span-1' : 'lg:col-span-3'}>
-            <div className="bg-white rounded-lg shadow-sm border">
-              {/* Messages */}
-              <div className="h-96 overflow-y-auto p-4 space-y-4">
-                {messages.map((message, index) => (
-                  <ChatMessage
-                    key={index}
-                    message={message}
-                    toolCalls={message.toolCalls}
+                {/* Volume Results */}
+                {latestMeasurement && (
+                  <div className="mt-4">
+                    <VolumeResultsView
+                      result={latestMeasurement}
+                      onExport={exportMeasurement}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Chat Section */}
+            <div className={showMap ? 'xl:col-span-1' : 'lg:col-span-3'}>
+              <div className="bg-white rounded-lg shadow-sm border">
+                {/* Messages */}
+                <div className="h-96 overflow-y-auto p-4 space-y-4">
+                  {messages.map((message, index) => (
+                    <ChatMessage
+                      key={index}
+                      message={message}
+                      toolCalls={message.toolCalls}
+                    />
+                  ))}
+
+                  {isLoading && <TypingIndicator />}
+
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input Area */}
+                <div className="border-t p-4">
+                  <ChatInput
+                    onSendMessage={handleSendMessage}
+                    disabled={isLoading}
+                    hasPolygons={drawnPolygons.length > 0}
+                    onQuickMeasure={handleQuickMeasure}
                   />
-                ))}
-
-                {isLoading && <TypingIndicator />}
-
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Input Area */}
-              <div className="border-t p-4">
-                <ChatInput
-                  onSendMessage={handleSendMessage}
-                  disabled={isLoading}
-                  hasPolygons={drawnPolygons.length > 0}
-                  onQuickMeasure={handleQuickMeasure}
-                />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Sidebar */}
-          <div
-            className={
-              showMap
-                ? 'xl:col-span-2 grid xl:grid-cols-2 gap-4'
-                : 'lg:col-span-1'
-            }
-          >
-            <div className="bg-white rounded-lg shadow-sm border p-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                File Upload
-              </h3>
-              <FileUpload onFileSelect={handleFileUpload} />
+            {/* Sidebar */}
+            <div
+              className={
+                showMap
+                  ? 'xl:col-span-2 grid xl:grid-cols-2 gap-4'
+                  : 'lg:col-span-1'
+              }
+            >
+              <div className="bg-white rounded-lg shadow-sm border p-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  File Upload
+                </h3>
+                <FileUpload onFileSelect={handleFileUpload} />
 
-              {uploadedFiles.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">
-                    Uploaded Files ({uploadedFiles.length})
+                {uploadedFiles.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      Uploaded Files ({uploadedFiles.length})
+                    </h4>
+                    <div className="space-y-1">
+                      {uploadedFiles.slice(-3).map((filepath, index) => (
+                        <div
+                          key={index}
+                          className="text-xs text-gray-600 bg-gray-50 p-2 rounded"
+                        >
+                          {filepath.split('/').pop()}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-blue-900 mb-2">
+                    Development Info
                   </h4>
-                  <div className="space-y-1">
-                    {uploadedFiles.slice(-3).map((filepath, index) => (
+                  <div className="text-xs text-blue-700 space-y-1">
+                    <div>Session: {sessionId}</div>
+                    <div>Tools: {tools.length}</div>
+                    <div>Messages: {messages.length}</div>
+                    <div>Polygons: {drawnPolygons.length}</div>
+                    {latestMeasurement && (
+                      <div>
+                        Last Measurement: {latestMeasurement.measurement_name}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Polygons List */}
+              {drawnPolygons.length > 0 && (
+                <div className="bg-white rounded-lg shadow-sm border p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">
+                    Drawn Polygons ({drawnPolygons.length})
+                  </h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {drawnPolygons.map(polygon => (
                       <div
-                        key={index}
-                        className="text-xs text-gray-600 bg-gray-50 p-2 rounded"
+                        key={polygon.id}
+                        className="p-3 bg-gray-50 rounded-lg"
                       >
-                        {filepath.split('/').pop()}
+                        <div className="font-medium text-sm">
+                          {polygon.name}
+                        </div>
+                        {polygon.area && (
+                          <div className="text-xs text-gray-600">
+                            Area:{' '}
+                            {polygon.area < 10000
+                              ? `${polygon.area.toFixed(1)} m²`
+                              : `${(polygon.area / 10000).toFixed(2)} ha`}
+                          </div>
+                        )}
+                        {polygon.volume && (
+                          <div className="text-xs text-gray-600">
+                            Volume: {polygon.volume.toFixed(1)} m³
+                          </div>
+                        )}
+                        <div className="text-xs text-gray-500 mt-1">
+                          Created: {polygon.createdAt.toLocaleTimeString()}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <h4 className="text-sm font-medium text-blue-900 mb-2">
-                  Development Info
-                </h4>
-                <div className="text-xs text-blue-700 space-y-1">
-                  <div>Session: {sessionId}</div>
-                  <div>Tools: {tools.length}</div>
-                  <div>Messages: {messages.length}</div>
-                  <div>Polygons: {drawnPolygons.length}</div>
-                  {latestMeasurement && (
-                    <div>
-                      Last Measurement: {latestMeasurement.measurement_name}
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
-
-            {/* Polygons List */}
-            {drawnPolygons.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border p-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Drawn Polygons ({drawnPolygons.length})
-                </h3>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {drawnPolygons.map(polygon => (
-                    <div key={polygon.id} className="p-3 bg-gray-50 rounded-lg">
-                      <div className="font-medium text-sm">{polygon.name}</div>
-                      {polygon.area && (
-                        <div className="text-xs text-gray-600">
-                          Area:{' '}
-                          {polygon.area < 10000
-                            ? `${polygon.area.toFixed(1)} m²`
-                            : `${(polygon.area / 10000).toFixed(2)} ha`}
-                        </div>
-                      )}
-                      {polygon.volume && (
-                        <div className="text-xs text-gray-600">
-                          Volume: {polygon.volume.toFixed(1)} m³
-                        </div>
-                      )}
-                      <div className="text-xs text-gray-500 mt-1">
-                        Created: {polygon.createdAt.toLocaleTimeString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
