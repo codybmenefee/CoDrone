@@ -191,6 +191,7 @@ logs
 *.db
 *.sqlite
 *.sqlite3
+dump.rdb
 
 # Temporary files
 tmp/
@@ -206,6 +207,10 @@ secrets/
 *.pem
 *.p12
 *.pfx
+
+# Security and analysis reports
+bandit-report.json
+.mypy_cache/
 
 # Build artifacts
 build/

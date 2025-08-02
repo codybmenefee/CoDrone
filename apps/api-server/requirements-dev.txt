@@ -1,0 +1,16 @@
+# Development and Future Dependencies
+
+# Testing
+pytest>=7.4.3
+pytest-asyncio>=0.21.1
+
+# Future async jobs
+celery>=5.3.0
+redis>=4.5.0
+
+# Future database support
+sqlalchemy>=2.0.23
+psycopg2-binary>=2.9.9
+
+# Additional tools
+psutil>=5.9.0

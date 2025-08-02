@@ -1,5 +1,5 @@
 {
-  "name": "canopy-copilot-api-server",
+  "name": "codrone-api-server",
   "version": "1.0.0",
   "private": true,
   "scripts": {

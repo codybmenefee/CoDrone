@@ -1,242 +1,104 @@
-# Canopy Copilot - AI-First Drone Data Copilot
+# CoDrone - AI-First Drone Data Copilot
 
-A modular, AI-first drone data copilot that can handle rich interactions, automate drone workflows, and provide clean chat UX with AI reasoning and multi-modal input.
+🚁 A modular, AI-first drone data copilot with spatial analysis, interactive mapping, and intelligent report generation. Built with React, FastAPI/Next.js, and Vercel AI SDK.
 
 ## 🏗️ Architecture
 
 ```text
-canopy-copilot/
+CoDrone/
 ├── apps/
-│   ├── frontend/             # React + Chat UI
-│   └── api-server/           # FastAPI + LangChain backend
+│   ├── frontend/             # React + Vite, chat UI, interactive maps
+│   └── api-server/           # FastAPI/Next.js hybrid with AI SDK
 ├── packages/
-│   ├── agent-tools/          # Tool registry for LangChain
-│   ├── report-editor/        # Future GrapesJS wrapper
-│   └── chat-ui/              # Chat UI components
+│   └── agent-tools/          # Spatial analysis tools
 ├── data/
-│   └── storage/              # Temporary file uploads
-├── scripts/
-├── docker-compose.yml
-└── README.md
+│   └── storage/              # File uploads and processing
+├── scripts/                  # Setup and deployment automation
+└── docs/                     # Documentation and guides
 ```
 
-## 🚀 Features
+## 🚀 Key Features
 
-- ✅ **Rich Chat Interface**: Multi-modal chat with file uploads
-- ✅ **AI Agent**: LangChain-powered agent with tool calling
-- ✅ **Memory & History**: Persistent conversation memory
-- ✅ **Tool Visualization**: Show AI reasoning and tool usage
-- 🔜 **Background Jobs**: Async drone data processing
-- 🔜 **Report Building**: GrapesJS-based report editor
-- 🔜 **Spatial Tools**: Map drawing and polygon analysis
-
-## 🤖 Agentic Development
-
-This project is optimized for **agentic development** using Cursor background agents. We've established a comprehensive workflow for AI-assisted feature development.
-
-### Quick Start for Agentic Development
-
-```bash
-# Setup agentic development environment
-make agent-setup
-
-# Create context for a task
-make agent-context
-
-# Delegate to background agent
-make agent-delegate
-
-# Review agent work
-make agent-review
-```
-
-### 📚 Agentic Development Resources
-
-- **[Quick Start Guide](docs/development/AGENTIC_QUICKSTART.md)** - Get started in 5 minutes
-- **[Full Framework](docs/development/AGENTIC_DEVELOPMENT.md)** - Comprehensive workflow guide
-- **[Development Roadmap](.cursor/roadmaps/development-roadmap.md)** - Feature planning and tracking
-- **[Task Board](.cursor/tasks/task-board.md)** - Current tasks and status
-
-### 📖 Documentation
-
-- **[Documentation Index](docs/README.md)** - Complete documentation guide
-- **[Project Summary](docs/PROJECT_SUMMARY.md)** - Detailed project overview
-- **[Demo Guide](docs/user-guides/DEMO.md)** - How to explore features
-
-### 🎯 Agentic Development Benefits
-
-- **AI Companion Planning**: Use AI to plan features and break down tasks
-- **Context Curation**: Create detailed contexts for background agents
-- **Task Delegation**: Delegate specific tasks to AI agents
-- **Progress Tracking**: Monitor development progress with structured roadmaps
-- **Quality Assurance**: Automated code review and testing
-
-## 🛠️ Tech Stack
-
-- **Backend**: FastAPI, LangChain, OpenAI
-- **Frontend**: React, TypeScript
-- **Agent**: LangChain with OpenAI Functions
-- **Memory**: ConversationBufferMemory (Redis planned)
-- **Files**: Multi-modal upload support
+- ✅ **Interactive Chat**: AI-powered spatial analysis with streaming responses
+- ✅ **Spatial Analysis**: Volume calculation, area measurement, elevation analysis
+- ✅ **Interactive Mapping**: Leaflet-based maps with polygon drawing
+- ✅ **File Processing**: Upload and analyze DSM, orthomosaic, point clouds
+- ✅ **Report Generation**: AI-assisted report creation with GrapesJS editor
+- ✅ **Session Management**: Persistent conversations with KV storage
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-
-- Python 3.11+
 - Node.js 18+
+- Python 3.8+ with virtual environment
 - OpenAI API key
 
-### Setup
-
-### Option 1: Quick Setup (Recommended)
-
+### Installation
 ```bash
-# 1. Run setup script
+# Quick setup (recommended)
 ./scripts/setup.sh
-
-# 2. Add your OpenAI API key to .env
 echo "OPENAI_API_KEY=sk-your-key-here" >> .env
-
-# 3. Start everything
 ./scripts/start.sh
-```
 
-### Option 2: Manual Setup
-
-```bash
-# 1. Install dependencies
+# Manual setup
 make install-dev
-
-# 2. Environment setup
-cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
-
-# 3. Start servers
+cp .env.example .env  # Add your OPENAI_API_KEY
 make start
 ```
 
-### Option 3: Docker
-
-```bash
-# Add OPENAI_API_KEY to .env first
-make docker-run
-```
-
-### 🚀 Access Points
-
-- **Frontend**: [http://localhost:3000](http://localhost:3000)
-- **Backend API**: [http://localhost:8000](http://localhost:8000)
-- **API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
+### Access
+- **Frontend**: http://localhost:3000
+- **API Server**: http://localhost:8000
 
 ## 🛠️ Development
 
-### Quality Assurance
-
-This project includes comprehensive quality assurance tools:
-
+### Commands
 ```bash
-# Run all quality checks
-make quality-check
-
-# Individual checks
-make lint          # Run all linters
-make test          # Run all tests
-make security-check # Run security scans
-make format        # Format all code
+make start              # Start both frontend and backend
+make test              # Run all tests with coverage
+make quality-check     # Run lint, test, security checks
+make format            # Format all code
 ```
 
-### Testing
+### Tech Stack
+- **Backend**: FastAPI/Next.js, Vercel AI SDK, GDAL
+- **Frontend**: React, TypeScript, Vite, Leaflet
+- **AI**: OpenAI GPT-4 with streaming and tool calling
+- **Storage**: File system with KV session storage
 
-```bash
-# Backend tests
-make test-backend
+## 📚 Documentation
 
-# Frontend tests
-make test-frontend
+- **[Migration Guide](docs/MIGRATION.md)** - Vercel AI SDK migration details
+- **[Testing Guide](docs/TESTING.md)** - Comprehensive testing information
+- **[Project Summary](docs/PROJECT_SUMMARY.md)** - Detailed project overview
+- **[Development Guide](docs/development/)** - Development workflows and guides
 
-# With coverage
-make test  # Includes coverage reports
-```
+## 🧪 Usage Examples
 
-### Code Quality
+### Spatial Analysis
+1. Upload drone data (DSM, orthomosaic)
+2. Draw polygons on interactive map
+3. Ask AI: "Calculate volume and area for this region"
+4. Get detailed measurements and analysis
 
-```bash
-# Format code
-make format
-
-# Check formatting
-make format-check
-
-# Security scanning
-make security-scan  # Bandit scan
-make security-check-full  # Full security audit
-```
-
-### Docker Development
-
-```bash
-# Build and run with Docker
-make docker-build
-make docker-run
-
-# View logs
-make docker-logs
-
-# Stop containers
-make docker-stop
-```
-
-## 📁 Phase 1 Implementation ✅
-
-**Complete working demo with:**
-
-- [x] Modular project structure (`apps/`, `packages/`, `data/`)
-- [x] FastAPI backend with LangChain agent integration
-- [x] 5 demo tools for drone data analysis
-- [x] File upload support (multi-modal input)
-- [x] Conversation memory with session management
-- [x] Modern React chat UI with tool visualization
-- [x] Docker development setup
-- [x] Setup and startup scripts
-
-## 🛣️ Roadmap
-
-### Phase 2: Drone Workflow Automation
-
-- [ ] Async background job queue (Celery/Temporal)
-- [ ] ODM integration for image processing
-- [ ] NDVI analysis tools
-- [ ] GeoTIFF generation
-
-### Phase 3: Report Building
-
-- [ ] GrapesJS integration
-- [ ] Template system
-- [ ] PDF export
-- [ ] Custom report components
-
-### Phase 4: Spatial Intelligence
-
-- [ ] Map-based polygon drawing
-- [ ] Area calculations
-- [ ] Layer annotations
-- [ ] GeoJSON storage
-
-## 🧭 Vision
-
-Create a comprehensive drone data copilot that seamlessly blends conversational AI with powerful automation tools, enabling users to go from raw drone imagery to actionable insights through natural language interactions.
+### Report Generation
+1. Analyze drone data through chat interface
+2. Ask AI: "Generate a crop health report"
+3. Customize report with visual editor
+4. Export as PDF or HTML
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to:
-
-- Set up your development environment
-- Follow our coding standards
-- Submit pull requests
-- Use our agentic development workflow
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `make test`
+5. Submit a pull request
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+[Your License Here]
+
+---
+
+**Built for efficient drone data analysis with AI-powered insights and professional reporting capabilities.**
