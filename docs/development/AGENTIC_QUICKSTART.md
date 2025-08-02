@@ -20,7 +20,7 @@ make agent-setup
 
 This creates the necessary directory structure:
 
-```
+```text
 .cursor/
 ├── agents/          # Agent configurations
 ├── contexts/        # Task-specific contexts
@@ -268,4 +268,6 @@ Track feature progress in `.cursor/roadmaps/development-roadmap.md`:
 
 ---
 
-_Ready to start building with AI agents? Begin with a simple task and iterate from there! 🚀_
+## Ready to Start Building with AI Agents?
+
+Begin with a simple task and iterate from there! 🚀

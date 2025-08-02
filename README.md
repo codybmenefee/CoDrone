@@ -4,7 +4,7 @@ A modular, AI-first drone data copilot that can handle rich interactions, automa
 
 ## 🏗️ Architecture
 
-```
+```text
 canopy-copilot/
 ├── apps/
 │   ├── frontend/             # React + Chat UI
@@ -89,7 +89,7 @@ make agent-review
 
 ### Setup
 
-**Option 1: Quick Setup (Recommended)**
+### Option 1: Quick Setup (Recommended)
 
 ```bash
 # 1. Run setup script
@@ -102,7 +102,7 @@ echo "OPENAI_API_KEY=sk-your-key-here" >> .env
 ./scripts/start.sh
 ```
 
-**Option 2: Manual Setup**
+### Option 2: Manual Setup
 
 ```bash
 # 1. Install dependencies
@@ -116,7 +116,7 @@ cp .env.example .env
 make start
 ```
 
-**Option 3: Docker**
+### Option 3: Docker
 
 ```bash
 # Add OPENAI_API_KEY to .env first
@@ -125,10 +125,10 @@ make docker-run
 
 ### 🚀 Access Points
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
+- **Frontend**: [http://localhost:3000](http://localhost:3000)
+- **Backend API**: [http://localhost:8000](http://localhost:8000)
+- **API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
 
 ## 🛠️ Development
 

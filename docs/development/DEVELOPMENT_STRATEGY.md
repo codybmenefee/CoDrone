@@ -27,9 +27,9 @@ You've built an excellent foundation with a modular, AI-first architecture. Here
 
 ### **Phase 1: Foundation & Core Tools (Weeks 1-2)**
 
-#### **Week 1: Setup & First Tools**
+#### Week 1: Setup & First Tools
 
-**Day 1-2: Environment Setup**
+##### Day 1-2: Environment Setup
 
 ```bash
 # Run the MVP setup script
@@ -42,7 +42,7 @@ You've built an excellent foundation with a modular, AI-first architecture. Here
 # - Add map libraries (Leaflet, Turf.js)
 ```
 
-**Day 3-4: Volume Measurement Tool**
+##### Day 3-4: Volume Measurement Tool
 
 ```bash
 # Delegate to background agent using your framework
@@ -51,7 +51,7 @@ make agent-context-mvp TASK="volume-measurement-tool"
 make agent-delegate-mvp CONTEXT="volume-measurement-tool" TASK="Implement volume calculation with polygon drawing"
 ```
 
-**Day 5-7: ODM Processing Tool**
+##### Day 5-7: ODM Processing Tool
 
 ```bash
 # Delegate ODM integration
@@ -59,15 +59,15 @@ make agent-context-mvp TASK="odm-processing-tool"
 make agent-delegate-mvp CONTEXT="odm-processing-tool" TASK="Implement ODM job management with async processing"
 ```
 
-#### **Week 2: Integration & Advanced Tools**
+#### Week 2: Integration & Advanced Tools
 
-**Day 8-10: Map Integration**
+##### Day 8-10: Map Integration
 
 - Delegate map component development
 - Integrate Leaflet.js with polygon drawing
 - Connect volume results to map visualization
 
-**Day 11-14: Report Generation**
+##### Day 11-14: Report Generation
 
 - Delegate report builder tool
 - Implement LLM-powered report writing

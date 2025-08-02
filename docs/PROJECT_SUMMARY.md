@@ -13,7 +13,7 @@ We've successfully built a **modular, AI-first drone data copilot** with all Pha
 
 ### 🏗️ Core Architecture
 
-```
+```text
 canopy-copilot/
 ├── apps/
 │   ├── api-server/          # FastAPI + LangChain backend
@@ -99,18 +99,18 @@ echo "OPENAI_API_KEY=sk-your-key-here" >> .env
 
 ### 🌐 API Endpoints
 
-**Chat & Agent**
+### Chat & Agent
 
 - `POST /chat` - Main chat endpoint with agent execution
 - `GET /sessions` - List active chat sessions
 - `DELETE /sessions/{id}` - Clear specific session
 
-**File Management**
+### File Management
 
 - `POST /upload` - Multi-modal file upload
 - `GET /files` - List uploaded files
 
-**System**
+### System
 
 - `GET /health` - Health check with system status
 - `GET /tools` - List available agent tools
@@ -118,21 +118,21 @@ echo "OPENAI_API_KEY=sk-your-key-here" >> .env
 
 ### 💡 Key Technical Decisions
 
-**Backend Architecture**
+### Backend Architecture
 
 - **FastAPI**: High-performance async framework
 - **LangChain**: Agent orchestration with OpenAI Functions
 - **Pydantic**: Type-safe data validation
 - **In-Memory Sessions**: Simple state management (Redis planned for Phase 2)
 
-**Frontend Architecture**
+### Frontend Architecture
 
 - **React + TypeScript**: Type-safe UI development
 - **Vite**: Fast development and building
 - **Tailwind CSS**: Utility-first styling
 - **Axios**: HTTP client with proxy configuration
 
-**Tool System**
+### Tool System
 
 - **Decorator Pattern**: `@tool` decorators for easy tool registration
 - **Type Safety**: Full typing for tool inputs/outputs
@@ -141,9 +141,9 @@ echo "OPENAI_API_KEY=sk-your-key-here" >> .env
 
 ### 🎭 Demo Experience
 
-**Sample Conversations:**
+### Sample Conversations:
 
-```
+```text
 User: "What datasets are available?"
 → Agent uses list_available_datasets tool
 → Shows 6 mock datasets with details
@@ -161,11 +161,11 @@ User: "Calculate area: [[40.7, -74.0], [40.7, -74.1], ...]"
 
 The architecture is designed to seamlessly extend:
 
-**Async Processing**: Ready for Celery/Temporal integration
-**Real Tools**: Mock tools easily replaceable with ODM, GDAL, etc.
-**Report Building**: GrapesJS integration planned
-**Spatial Features**: Map drawing with Mapbox/DeckGL
-**Data Persistence**: PostgreSQL and Redis integration ready
+- **Async Processing**: Ready for Celery/Temporal integration
+- **Real Tools**: Mock tools easily replaceable with ODM, GDAL, etc.
+- **Report Building**: GrapesJS integration planned
+- **Spatial Features**: Map drawing with Mapbox/DeckGL
+- **Data Persistence**: PostgreSQL and Redis integration ready
 
 ### 🎯 Success Criteria Met
 

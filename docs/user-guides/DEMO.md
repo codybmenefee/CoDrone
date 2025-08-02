@@ -8,23 +8,23 @@ This guide shows you how to explore the features of Canopy Copilot.
 
 Try these example queries:
 
-**Data Analysis**
+### Data Analysis
 
 - "What datasets are available for analysis?"
 - "Analyze the orthomosaic from Farm A"
 - "Show me the Farm A multispectral data"
 
-**Area Calculations**
+### Area Calculations
 
 - "Calculate the area of this field: [[40.7128, -74.0060], [40.7138, -74.0050], [40.7148, -74.0070], [40.7128, -74.0080]]"
 - "How many hectares is a field with 6 coordinate points?"
 
-**Processing Estimates**
+### Processing Estimates
 
 - "Estimate processing time for NDVI analysis with 300 images"
 - "How long will it take to create a 3D model from 500 images?"
 
-**Report Generation**
+### Report Generation
 
 - "Generate a crop health report preview for Farm A data"
 - "Create an inspection report for the solar farm data"
@@ -114,6 +114,6 @@ This is Phase 1. Coming in Phase 2:
 
 **Tools not working?**
 
-- Check the API docs: http://localhost:8000/docs
+- Check the API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 - Verify tool registration in `/tools` endpoint
 - Check backend logs for errors

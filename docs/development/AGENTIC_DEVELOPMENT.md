@@ -1,6 +1,7 @@
 # 🤖 Agentic Development Framework for CoDrone
 
-This document outlines the optimized workflow for using Cursor background agents to build features for the CoDrone project.
+This document outlines the optimized workflow for using Cursor background agents to
+build features for the CoDrone project.
 
 ## 🎯 Overview
 
@@ -13,8 +14,9 @@ The agentic development workflow enables you to:
 
 ## 📋 Workflow Overview
 
-```
-1. Feature Planning (AI Companion) → 2. Task Breakdown → 3. Context Curation → 4. Agent Delegation → 5. Review & Integration
+```mermaid
+1. Feature Planning (AI Companion) → 2. Task Breakdown → 3. Context Curation →
+4. Agent Delegation → 5. Review & Integration
 ```
 
 ## 🛠️ Setup Requirements
@@ -127,7 +129,7 @@ Break features into atomic tasks:
 
 ### Context Template Structure
 
-```markdown
+````markdown
 # Agent Context Template
 
 ## Project Context
@@ -152,8 +154,8 @@ Break features into atomic tasks:
 - **Documentation**: Docstrings, README updates
 
 ## Current Architecture
-```
 
+```bash
 apps/
 ├── api-server/ # FastAPI backend
 ├── frontend/ # React frontend
@@ -161,19 +163,20 @@ packages/
 ├── agent-tools/ # LangChain tools
 data/
 └── storage/ # File uploads
-
 ```
+````
 
 ## Task-Specific Context
+
 [Add task-specific information here]
 
 ## Constraints & Guidelines
+
 - Maintain existing code patterns
 - Follow established naming conventions
 - Add appropriate tests
 - Update documentation
 - Consider backward compatibility
-```
 
 ## 🚀 Agent Delegation Process
 
@@ -220,7 +223,8 @@ Use Cursor's background agent with the curated context:
 
 ```bash
 # Example delegation command
-cursor agent --context .cursor/contexts/user-auth.md --task "Implement user authentication system"
+cursor agent --context .cursor/contexts/user-auth.md \
+  --task "Implement user authentication system"
 ```
 
 ## 📊 Progress Tracking
@@ -295,30 +299,30 @@ cursor agent --context .cursor/contexts/user-auth.md --task "Implement user auth
 
 Add these targets to your Makefile:
 
-```makefile
+```bash
 # Agentic Development
 agent-context: ## Generate context for agent task
-	@echo "Generating agent context..."
-	@read -p "Enter task name: " task; \
-	read -p "Enter task description: " desc; \
-	cp .cursor/templates/context-template.md .cursor/contexts/$$task.md; \
-	sed -i '' "s/\[TASK_NAME\]/$$task/g" .cursor/contexts/$$task.md; \
-	sed -i '' "s/\[TASK_DESCRIPTION\]/$$desc/g" .cursor/contexts/$$task.md; \
-	echo "Context created: .cursor/contexts/$$task.md"
+    @echo "Generating agent context..."
+    @read -p "Enter task name: " task; \
+    read -p "Enter task description: " desc; \
+    cp .cursor/templates/context-template.md .cursor/contexts/$$task.md; \
+    sed -i '' "s/\[TASK_NAME\]/$$task/g" .cursor/contexts/$$task.md; \
+    sed -i '' "s/\[TASK_DESCRIPTION\]/$$desc/g" .cursor/contexts/$$task.md; \
+    echo "Context created: .cursor/contexts/$$task.md"
 
 agent-delegate: ## Delegate task to background agent
-	@echo "Delegating task to background agent..."
-	@read -p "Enter context file: " context; \
-	read -p "Enter task description: " task; \
-	cursor agent --context .cursor/contexts/$$context --task "$$task"
+    @echo "Delegating task to background agent..."
+    @read -p "Enter context file: " context; \
+    @read -p "Enter task description: " task; \
+    cursor agent --context .cursor/contexts/$$context --task "$$task"
 
 agent-status: ## Check agent task status
-	@echo "Agent Task Status:"
-	@ls -la .cursor/tasks/ 2>/dev/null || echo "No tasks found"
+    @echo "Agent Task Status:"
+    @ls -la .cursor/tasks/ 2>/dev/null || echo "No tasks found"
 
 roadmap-update: ## Update roadmap with progress
-	@echo "Updating roadmap..."
-	@date +"%Y-%m-%d" >> .cursor/roadmaps/progress.log
+    @echo "Updating roadmap..."
+    @date +"%Y-%m-%d" >> .cursor/roadmaps/progress.log
 ```
 
 ## 🎯 Best Practices
@@ -400,4 +404,5 @@ make test-agent-features
 
 ---
 
-_This framework is designed to evolve with your project. Update templates, contexts, and processes based on what works best for your team and project needs._
+_This framework is designed to evolve with your project. Update templates, contexts, and
+processes based on what works best for your team and project needs._

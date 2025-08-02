@@ -23,7 +23,7 @@
 
 ## Current Architecture
 
-```
+```text
 apps/
 ├── api-server/     # FastAPI backend
 ├── frontend/       # React frontend
@@ -166,12 +166,12 @@ interface MapComponentProps {
 
 ### 📚 References
 
-- **Leaflet.js Documentation**: https://leafletjs.com/reference.html
-- **React-Leaflet Documentation**: https://react-leaflet.js.org/
-- **Turf.js Documentation**: https://turfjs.org/
-- **Leaflet.draw Plugin**: https://github.com/Leaflet/Leaflet.draw
-- **GDAL Python Bindings**: https://gdal.org/python/
-- **GeoJSON Specification**: https://tools.ietf.org/html/rfc7946
+- **Leaflet.js Documentation**: [https://leafletjs.com/reference.html](https://leafletjs.com/reference.html)
+- **React-Leaflet Documentation**: [https://react-leaflet.js.org/](https://react-leaflet.js.org/)
+- **Turf.js Documentation**: [https://turfjs.org/](https://turfjs.org/)
+- **Leaflet.draw Plugin**: [https://github.com/Leaflet/Leaflet.draw](https://github.com/Leaflet/Leaflet.draw)
+- **GDAL Python Bindings**: [https://gdal.org/python/](https://gdal.org/python/)
+- **GeoJSON Specification**: [https://tools.ietf.org/html/rfc7946](https://tools.ietf.org/html/rfc7946)
 - **Existing Spatial Tools**: `packages/agent_tools/spatial_tools.py` - Reference existing volume calculation implementation
 - **Frontend Patterns**: `apps/frontend/src/components/` - Follow existing component patterns and styling
 - **API Patterns**: `apps/api-server/main.py` - Follow existing FastAPI endpoint patterns
