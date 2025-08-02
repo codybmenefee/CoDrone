@@ -21,6 +21,9 @@ from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
+# Import report management router
+from report_management import router as report_router
+
 # Load environment variables
 load_dotenv()
 
@@ -59,6 +62,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include report management router
+app.include_router(report_router)
 
 
 # Pydantic models
