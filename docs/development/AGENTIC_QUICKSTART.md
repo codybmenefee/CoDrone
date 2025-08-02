@@ -264,7 +264,7 @@ Track feature progress in `.cursor/roadmaps/development-roadmap.md`:
 - [Development Roadmap](.cursor/roadmaps/development-roadmap.md)
 - [Task Board](.cursor/tasks/task-board.md)
 - [Cursor Documentation](https://cursor.sh/docs)
-- [CoDrone Project Summary](PROJECT_SUMMARY.md)
+- [CoDrone Project Summary](../PROJECT_SUMMARY.md)
 
 ---
 

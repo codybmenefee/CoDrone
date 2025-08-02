@@ -52,10 +52,16 @@ make agent-review
 
 ### 📚 Agentic Development Resources
 
-- **[Quick Start Guide](AGENTIC_QUICKSTART.md)** - Get started in 5 minutes
-- **[Full Framework](AGENTIC_DEVELOPMENT.md)** - Comprehensive workflow guide
+- **[Quick Start Guide](docs/development/AGENTIC_QUICKSTART.md)** - Get started in 5 minutes
+- **[Full Framework](docs/development/AGENTIC_DEVELOPMENT.md)** - Comprehensive workflow guide
 - **[Development Roadmap](.cursor/roadmaps/development-roadmap.md)** - Feature planning and tracking
 - **[Task Board](.cursor/tasks/task-board.md)** - Current tasks and status
+
+### 📖 Documentation
+
+- **[Documentation Index](docs/README.md)** - Complete documentation guide
+- **[Project Summary](docs/PROJECT_SUMMARY.md)** - Detailed project overview
+- **[Demo Guide](docs/user-guides/DEMO.md)** - How to explore features
 
 ### 🎯 Agentic Development Benefits
 

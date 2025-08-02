@@ -126,7 +126,7 @@ def get_available_tools() -> List[Any]:
     try:
         from agent_tools.tool_registry import tools
 
-        return tools
+        return list(tools)
     except ImportError:
         return []
 
