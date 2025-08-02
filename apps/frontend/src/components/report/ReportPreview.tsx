@@ -34,9 +34,9 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
 
   useEffect(() => {
     loadReport();
-  }, [reportId]);
+  }, [reportId, loadReport]);
 
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
     try {
       setLoading(true);
       const reportData = await reportApi.getReport(reportId);
@@ -48,7 +48,7 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [reportId]);
 
   const handleExport = async (options: ExportOptions) => {
     if (!report) return;

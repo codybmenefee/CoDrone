@@ -150,6 +150,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
     enableDrawing,
     enableEditing,
     orthomosaicUrl,
+    setupEventHandlers,
   ]);
 
   // Load initial polygons
@@ -159,53 +160,63 @@ const MapComponent: React.FC<MapComponentProps> = ({
     initialPolygons.forEach(drawnPolygon => {
       addPolygonToMap(drawnPolygon);
     });
-  }, [initialPolygons]);
+  }, [initialPolygons, addPolygonToMap]);
 
-  const setupEventHandlers = (map: L.Map, drawnItems: L.FeatureGroup) => {
-    // Polygon created
-    map.on(L.Draw.Event.CREATED, (event: L.LeafletEvent) => {
-      const layer = event.layer as L.Polygon;
-      const polygon = layerToGeoJSON(layer);
-
-      if (polygon) {
-        const drawnPolygon = createDrawnPolygon(polygon, layer);
-        setDrawnPolygons(prev => [...prev, drawnPolygon]);
-        drawnItems.addLayer(layer);
-
-        // Add popup with measurement options
-        addPolygonPopup(layer, drawnPolygon);
-
-        // Calculate area immediately
-        calculateArea(polygon, drawnPolygon.name);
-
-        onPolygonDrawn?.(polygon);
-      }
-    });
-
-    // Polygon edited
-    map.on(L.Draw.Event.EDITED, (event: L.LeafletEvent) => {
-      const layers = (event as unknown as { layers: L.LayerGroup }).layers;
-      layers.eachLayer((layer: L.Layer) => {
+  const setupEventHandlers = useCallback(
+    (map: L.Map, drawnItems: L.FeatureGroup) => {
+      // Polygon created
+      map.on(L.Draw.Event.CREATED, (event: L.LeafletEvent) => {
+        const layer = event.layer as L.Polygon;
         const polygon = layerToGeoJSON(layer);
-        if (polygon && layer instanceof L.Polygon) {
-          updatePolygonInState(layer, polygon);
-          onPolygonEdited?.(polygon);
+
+        if (polygon) {
+          const drawnPolygon = createDrawnPolygon(polygon, layer);
+          setDrawnPolygons(prev => [...prev, drawnPolygon]);
+          drawnItems.addLayer(layer);
+
+          // Add popup with measurement options
+          addPolygonPopup(layer, drawnPolygon);
+
+          // Calculate area immediately
+          calculateArea(polygon, drawnPolygon.name);
+
+          onPolygonDrawn?.(polygon);
         }
       });
-    });
 
-    // Polygon deleted
-    map.on(L.Draw.Event.DELETED, (event: L.LeafletEvent) => {
-      const layers = (event as unknown as { layers: L.LayerGroup }).layers;
-      layers.eachLayer((layer: L.Layer) => {
-        const polygon = layerToGeoJSON(layer);
-        if (polygon && layer instanceof L.Polygon) {
-          removePolygonFromState(layer);
-          onPolygonDeleted?.(polygon);
-        }
+      // Polygon edited
+      map.on(L.Draw.Event.EDITED, (event: L.LeafletEvent) => {
+        const layers = (event as unknown as { layers: L.LayerGroup }).layers;
+        layers.eachLayer((layer: L.Layer) => {
+          const polygon = layerToGeoJSON(layer);
+          if (polygon && layer instanceof L.Polygon) {
+            updatePolygonInState(layer, polygon);
+            onPolygonEdited?.(polygon);
+          }
+        });
       });
-    });
-  };
+
+      // Polygon deleted
+      map.on(L.Draw.Event.DELETED, (event: L.LeafletEvent) => {
+        const layers = (event as unknown as { layers: L.LayerGroup }).layers;
+        layers.eachLayer((layer: L.Layer) => {
+          const polygon = layerToGeoJSON(layer);
+          if (polygon && layer instanceof L.Polygon) {
+            removePolygonFromState(layer);
+            onPolygonDeleted?.(polygon);
+          }
+        });
+      });
+    },
+    [
+      onPolygonDrawn,
+      onPolygonEdited,
+      onPolygonDeleted,
+      calculateArea,
+      createDrawnPolygon,
+      addPolygonPopup,
+    ]
+  );
 
   const layerToGeoJSON = (layer: L.Layer): GeoJSONPolygon | null => {
     if (layer instanceof L.Polygon) {
@@ -271,26 +282,29 @@ const MapComponent: React.FC<MapComponentProps> = ({
     };
   };
 
-  const addPolygonToMap = (drawnPolygon: DrawnPolygon) => {
-    if (!drawnItemsRef.current) return;
+  const addPolygonToMap = useCallback(
+    (drawnPolygon: DrawnPolygon) => {
+      if (!drawnItemsRef.current) return;
 
-    const coordinates = drawnPolygon.polygon.coordinates[0];
-    const latLngs: L.LatLng[] = coordinates.map(coord =>
-      L.latLng(coord[1], coord[0])
-    );
+      const coordinates = drawnPolygon.polygon.coordinates[0];
+      const latLngs: L.LatLng[] = coordinates.map(coord =>
+        L.latLng(coord[1], coord[0])
+      );
 
-    const layer = L.polygon(latLngs, {
-      color: drawnPolygon.color || '#97009c',
-      weight: 3,
-      opacity: 0.8,
-      fillOpacity: 0.3,
-    });
+      const layer = L.polygon(latLngs, {
+        color: drawnPolygon.color || '#97009c',
+        weight: 3,
+        opacity: 0.8,
+        fillOpacity: 0.3,
+      });
 
-    (layer as L.Polygon & { _drawnPolygonId?: string })._drawnPolygonId =
-      drawnPolygon.id;
-    drawnItemsRef.current.addLayer(layer);
-    addPolygonPopup(layer, drawnPolygon);
-  };
+      (layer as L.Polygon & { _drawnPolygonId?: string })._drawnPolygonId =
+        drawnPolygon.id;
+      drawnItemsRef.current.addLayer(layer);
+      addPolygonPopup(layer, drawnPolygon);
+    },
+    [addPolygonPopup]
+  );
 
   const addPolygonPopup = (layer: L.Polygon, drawnPolygon: DrawnPolygon) => {
     if (!showMeasurements) return;
