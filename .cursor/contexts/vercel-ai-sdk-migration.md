@@ -319,12 +319,12 @@ Migrate CoDrone's entire agentic architecture from LangChain to Vercel AI SDK, m
        model: openai('gpt-4o'),
        messages: convertToModelMessages(messages),
        system: `You are an AI-powered drone data analysis assistant with advanced spatial analysis capabilities.
-
+   
        SPATIAL TOOLS USAGE:
        - calculateVolumeFromPolygon: Calculate volume from polygon and DSM
        - calculatePolygonArea: Calculate area of polygons
        - analyzeElevationProfile: Analyze elevation within polygons
-
+   
        Always validate polygon coordinates before processing.`,
        tools: spatialTools,
      });
