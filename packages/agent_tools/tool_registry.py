@@ -18,6 +18,14 @@ from .spatial_tools import (
     calculate_polygon_area,
     calculate_volume_from_polygon,
 )
+# Import report generation tools
+from .report_tools import (
+    generate_report_from_template,
+    create_custom_report,
+    list_available_report_templates,
+    generate_ai_powered_report,
+    export_report_to_format,
+)
 
 
 @tool  # type: ignore
@@ -242,4 +250,10 @@ tools = [
     calculate_polygon_area,
     analyze_elevation_profile,
     process_images_with_odm,
+    # Report generation tools
+    generate_report_from_template,
+    create_custom_report,
+    list_available_report_templates,
+    generate_ai_powered_report,
+    export_report_to_format,
 ]
