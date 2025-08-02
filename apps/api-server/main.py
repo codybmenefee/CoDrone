@@ -37,6 +37,15 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "./data/storage"))
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 API_PORT = int(os.getenv("API_PORT", "8000"))
+DEV_MODE = os.getenv("DEV_MODE", "").lower()
+
+# Fast development mode optimizations
+FAST_MODE = DEV_MODE == "fast"
+if FAST_MODE:
+    print("🚀 FastAPI starting in FAST development mode")
+    print("   • Skipping expensive validations")
+    print("   • Using minimal logging")
+    print("   • Optimized for rapid iteration")
 
 if not OPENAI_API_KEY:
     raise ValueError("OPENAI_API_KEY environment variable is required")
@@ -134,6 +143,9 @@ def get_available_tools() -> List[Any]:
 
         return list(tools)
     except ImportError:
+        if FAST_MODE:
+            print("⚠️  Tools not available in fast mode - using mock tools")
+            return []  # Return empty tools for fast startup
         return []
 
 

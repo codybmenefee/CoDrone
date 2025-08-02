@@ -41,6 +41,10 @@ start: ## Start the application (backend + frontend)
 	@echo "Starting Canopy Copilot..."
 	./scripts/start.sh
 
+start-fast: ## Start in fast development mode (skip quality checks)
+	@echo "Starting Canopy Copilot in FAST mode..."
+	./scripts/dev-fast.sh
+
 start-backend: ## Start only the backend API server
 	@echo "Starting backend API server..."
 	@if [ -d "venv" ]; then \
@@ -61,6 +65,24 @@ test: ## Run all tests
 	else \
 		python3 -m pytest tests/ -v --cov=apps --cov-report=html --cov-report=term-missing; \
 	fi
+
+test-fast: ## Run tests without coverage or slow tests (for rapid iteration)
+	@echo "Running fast tests..."
+	@if [ -d "venv" ]; then \
+		source venv/bin/activate && pytest tests/ -v -m "not slow" --tb=short --no-cov; \
+	else \
+		python3 -m pytest tests/ -v -m "not slow" --tb=short --no-cov; \
+	fi
+	cd apps/frontend && npm test -- --run --reporter=dot
+
+test-changed: ## Run tests only for changed files (git-aware)
+	@echo "Running tests for changed files..."
+	@if [ -d "venv" ]; then \
+		source venv/bin/activate && pytest tests/ --lf --tb=short --no-cov; \
+	else \
+		python3 -m pytest tests/ --lf --tb=short --no-cov; \
+	fi
+	cd apps/frontend && npm test -- --onlyChanged --watchAll=false
 
 test-backend: ## Run backend tests only
 	@echo "Running backend tests..."
@@ -154,6 +176,10 @@ docker-build: ## Build Docker images
 docker-run: ## Run with Docker Compose
 	@echo "Starting with Docker Compose..."
 	docker-compose up -d
+
+docker-dev: ## Run with minimal Docker Compose for development
+	@echo "Starting with Docker Compose in development mode..."
+	docker-compose -f docker-compose.dev.yml up
 
 docker-stop: ## Stop Docker containers
 	@echo "Stopping Docker containers..."

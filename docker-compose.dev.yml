@@ -1,0 +1,53 @@
+version: '3.8'
+
+# Minimal Docker Compose for Fast Development
+# Optimized for rapid iteration with only essential services
+# Use: docker-compose -f docker-compose.dev.yml up
+
+services:
+  # FastAPI Backend - Optimized for Development
+  api:
+    build:
+      context: ./apps/api-server
+      dockerfile: Dockerfile
+    ports:
+      - '8000:8000'
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEV_MODE=fast
+      - API_PORT=8000
+      - UPLOAD_DIR=/app/data/storage
+    volumes:
+      - ./data/storage:/app/data/storage
+      - ./apps/api-server:/app
+      - ./packages:/app/packages
+    # No dependencies - start immediately
+    restart: 'no'  # Don't restart in dev mode
+    command: >
+      sh -c "echo '🚀 Starting API in fast development mode...' &&
+             python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000 --log-level warning --reload-delay 0.25"
+
+  # React Frontend - Optimized for Development
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./apps/frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - NODE_ENV=development
+    restart: 'no'  # Don't restart in dev mode
+    command: >
+      sh -c "echo '⚛️  Starting frontend in fast development mode...' &&
+             npm run dev -- --host 0.0.0.0 --port 3000 --no-open --clearScreen false"
+
+# Removed services for fast development:
+# - redis (not needed for basic functionality)
+# - postgres (not needed for basic functionality)
+#
+# These can be added back when needed:
+# docker-compose -f docker-compose.yml up redis postgres
