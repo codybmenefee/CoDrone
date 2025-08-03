@@ -28,6 +28,16 @@ from .spatial_tools import (
     calculate_volume_from_polygon,
 )
 
+# Import mission planning tools
+from .mission_planning_tools import (
+    assess_mission_risks,
+    check_weather_conditions,
+    estimate_mission_cost,
+    generate_kml_export,
+    optimize_flight_parameters,
+    plan_drone_mission,
+)
+
 
 @tool  # type: ignore
 def simulate_drone_analysis(input_description: str) -> str:
@@ -173,6 +183,81 @@ Generation Time: 2-3 hours
 
 
 @tool  # type: ignore
+def inspect_map_polygons(session_id: Optional[str] = None) -> str:
+    """
+    Inspect the current map state to see what polygons the user has drawn.
+
+    This tool allows the AI agent to see all polygons currently drawn on the map,
+    including their coordinates, which ones are selected, and metadata.
+
+    Args:
+        session_id: Optional session identifier to get polygons for specific session
+
+    Returns:
+        JSON string containing all drawn polygons with their GeoJSON coordinates
+    """
+    import json
+
+    try:
+        # Import map_states from the main module
+        # Use sys to avoid circular imports
+        import sys
+
+        # Try to get map_states from the main module
+        main_module = sys.modules.get("__main__")
+        if main_module and hasattr(main_module, "map_states"):
+            map_states = getattr(main_module, "map_states")
+        else:
+            # Fallback: try to import directly from main
+            try:
+                from main import map_states
+            except ImportError:
+                return "Map state storage not available. This tool requires the server to be running with map state management."
+
+        # Use session_id or try to get from the current context
+        session_key = (
+            session_id or "test_session"
+        )  # For now, use test_session as default
+
+        # Get map state for this session
+        if session_key not in map_states:
+            return "No polygons are currently drawn on the map. The user needs to draw a polygon first before I can create a mission plan."
+
+        map_data = map_states[session_key]
+        polygons = map_data.get("polygons", [])
+        selected_polygon_id = map_data.get("selectedPolygon")
+
+        if not polygons:
+            return "No polygons are currently drawn on the map. The user needs to draw a polygon first before I can create a mission plan."
+
+        result = f"Map State Inspection:\n\n"
+        result += f"Total polygons drawn: {len(polygons)}\n"
+        result += f"Selected polygon ID: {selected_polygon_id or 'None'}\n\n"
+
+        for i, polygon in enumerate(polygons, 1):
+            result += f"Polygon {i}:\n"
+            result += f"  ID: {polygon.get('id', 'unknown')}\n"
+            result += f"  Name: {polygon.get('name', 'Unnamed')}\n"
+            result += f"  Selected: {'Yes' if polygon.get('id') == selected_polygon_id else 'No'}\n"
+            result += f"  Area: {polygon.get('area', 'Unknown')} hectares\n"
+            result += f"  GeoJSON: {json.dumps(polygon.get('polygon', {}))}\n\n"
+
+        # If there's a selected polygon, provide it prominently
+        if selected_polygon_id:
+            selected = next(
+                (p for p in polygons if p.get("id") == selected_polygon_id), None
+            )
+            if selected:
+                result += f"SELECTED POLYGON FOR MISSION PLANNING:\n"
+                result += f"Use this GeoJSON for mission planning: {json.dumps(selected.get('polygon', {}))}\n"
+
+        return result
+
+    except Exception as e:
+        return f"Error inspecting map polygons: {str(e)}. Make sure the map state is available."
+
+
+@tool  # type: ignore
 def list_available_datasets(location_filter: Optional[str] = None) -> str:
     """
     List available datasets for analysis.
@@ -247,6 +332,7 @@ tools = [
     estimate_processing_time,
     generate_report_preview,
     list_available_datasets,
+    inspect_map_polygons,  # New map inspection tool
     calculate_volume_from_polygon,
     calculate_polygon_area,
     analyze_elevation_profile,
@@ -257,4 +343,11 @@ tools = [
     list_available_report_templates,
     generate_ai_powered_report,
     export_report_to_format,
+    # Mission planning tools
+    plan_drone_mission,
+    check_weather_conditions,
+    optimize_flight_parameters,
+    estimate_mission_cost,
+    generate_kml_export,
+    assess_mission_risks,
 ]

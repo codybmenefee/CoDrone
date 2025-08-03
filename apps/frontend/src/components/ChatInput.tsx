@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { Send, FileUp, X } from 'lucide-react';
-import { useChat } from '@ai-sdk/react';
 import { nanoid } from 'nanoid';
 
 interface ChatInputProps {
@@ -35,35 +34,70 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Use Vercel AI SDK's useChat hook
-  const {
-    handleInputChange,
-    handleSubmit: aiHandleSubmit,
-    isLoading,
-    error,
-  } = useChat({
-    api: '/api/chat',
-    initialInput: message,
-    body: {
-      sessionId: sessionId,
-      attachments: attachedFiles,
-    },
-    onFinish: message => {
-      // Handle completion
+  // Custom chat implementation using direct API calls
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    // This will be handled by handleTextareaChange
+  };
+
+  const aiHandleSubmit = async (options?: { data?: any }) => {
+    if (!message.trim() || isLoading) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'user',
+              content: message.trim(),
+            },
+          ],
+          session_id: sessionId,
+          file_attachments: attachedFiles,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      // Handle the response
       if (onNewMessage) {
-        onNewMessage(message);
+        onNewMessage({
+          id: nanoid(),
+          role: 'assistant',
+          content: result.message,
+          timestamp: new Date().toISOString(),
+          tool_calls: result.tool_calls,
+        });
       }
-    },
-    onToolCall: toolCall => {
+
       // Handle tool calls
-      if (onToolCall) {
-        onToolCall(toolCall);
+      if (result.tool_calls && result.tool_calls.length > 0 && onToolCall) {
+        result.tool_calls.forEach((toolCall: any) => {
+          onToolCall(toolCall);
+        });
       }
-    },
-    onError: error => {
-      console.error('Chat error:', error);
-    },
-  });
+
+    } catch (err) {
+      const errorObj = err instanceof Error ? err : new Error('Unknown error');
+      setError(errorObj);
+      console.error('Chat error:', errorObj);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

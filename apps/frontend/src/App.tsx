@@ -151,20 +151,58 @@ function App() {
     setAttachedFiles(prev => prev.filter(f => f !== filename));
   };
 
+  // Sync map state with backend
+  const syncMapState = async (polygons: DrawnPolygon[], selectedId: string | null) => {
+    try {
+      await fetch('/api/map/state', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          polygons: polygons.map(p => ({
+            id: p.id,
+            name: p.name || `Polygon ${p.id}`,
+            polygon: p.polygon,
+            area: p.area || 0
+          })),
+          selectedPolygon: selectedId,
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to sync map state:', error);
+    }
+  };
+
   const handlePolygonDrawn = useCallback((polygon: DrawnPolygon) => {
-    setDrawnPolygons(prev => [...prev, polygon]);
+    setDrawnPolygons(prev => {
+      const updated = [...prev, polygon];
+      // Sync with backend
+      syncMapState(updated, polygon.id);
+      return updated;
+    });
     setSelectedPolygon(polygon.id);
   }, []);
 
   const handlePolygonEdited = useCallback((polygon: DrawnPolygon) => {
-    setDrawnPolygons(prev =>
-      prev.map(p => (p.id === polygon.id ? polygon : p))
-    );
-  }, []);
+    setDrawnPolygons(prev => {
+      const updated = prev.map(p => (p.id === polygon.id ? polygon : p));
+      // Sync with backend
+      syncMapState(updated, selectedPolygon);
+      return updated;
+    });
+  }, [selectedPolygon]);
 
   const handlePolygonDeleted = useCallback(
     (polygonId: string) => {
-      setDrawnPolygons(prev => prev.filter(p => p.id !== polygonId));
+      setDrawnPolygons(prev => {
+        const updated = prev.filter(p => p.id !== polygonId);
+        const newSelectedId = selectedPolygon === polygonId ? null : selectedPolygon;
+        // Sync with backend
+        syncMapState(updated, newSelectedId);
+        return updated;
+      });
       if (selectedPolygon === polygonId) {
         setSelectedPolygon(null);
       }
